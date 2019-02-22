@@ -2,7 +2,7 @@
 REGISTRY_URI=$1
 
 # Deploy operator
-rm config/gen/operator.yaml
+rm -f config/gen/operator.yaml
 
 cat config/operator.yaml | \
   sed 's~REGISTRY_URI_PLACEHOLDER~'"$REGISTRY_URI"'~' >> config/gen/operator.yaml
