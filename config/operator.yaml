@@ -1,0 +1,51 @@
+# This is a very simple Knative Service that writes the input request to its log.
+
+apiVersion: serving.knative.dev/v1alpha1
+kind: Service
+metadata:
+  name: github-operator
+  namespace: keptn
+spec:
+  runLatest:
+    configuration:
+      build:
+        apiVersion: build.knative.dev/v1alpha1
+        kind: Build
+        metadata:
+          name: operator-builder
+          namespace: keptn
+        spec:
+          serviceAccountName: build-bot
+          source:
+            git:
+              url: https://github.com/keptn/github-operator.git
+              revision: master
+          template:
+            name: kaniko
+            arguments:
+              - name: IMAGE
+                value: docker-registry.cicd.svc.cluster.local:5000/keptn/github-operator:latest
+      revisionTemplate:
+        spec:
+          container:
+            image: REGISTRY_URI_PLACEHOLDER:5000/keptn/github-operator:latest
+            env: 
+---
+
+# Subscription from the GcpPubSubSource's output Channel to the Knative Service below.
+
+apiVersion: eventing.knative.dev/v1alpha1
+kind: Subscription
+metadata:
+  name: github-operator-subscription
+  namespace: keptn
+spec:
+  channel:
+    apiVersion: eventing.knative.dev/v1alpha1
+    kind: Channel
+    name: github-channel
+  subscriber:
+    ref:
+      apiVersion: serving.knative.dev/v1alpha1
+      kind: Service
+      name: github-operator
