@@ -11,18 +11,19 @@ router.post('/', async (request: express.Request, response: express.Response) =>
 
   // TODO: check request body - CloudEvent
 
-  let eventtype : string = 'onboard';
+  const eventtype : string = 'onboard';
 
-  if (eventtype == 'webhook') {
+  if (eventtype === 'webhook') {
+
     // logic to handle a push or pull request event
-    let eventHandler : EventHandler = GitHubService.getInstance();
+    const eventHandler : EventHandler = GitHubService.getInstance();
     eventHandler.handleEvent('', '');
 
   } else if (eventtype === 'create') {
     const gitHubOrgName = 'keptn-test';
     const payload : CreateProjectRequest = {
       data : {
-        project: 'sockshop16',
+        project: 'sockshop17',
         stages: [
           {
             name: 'dev',
@@ -48,7 +49,7 @@ router.post('/', async (request: express.Request, response: express.Response) =>
     const gitHubOrgName = 'keptn-test';
     const payload : OnboardServiceRequest = {
       data : {
-        project: 'sockshop16',
+        project: 'sockshop17',
         file: '',
       },
     };
