@@ -1,6 +1,6 @@
 import express = require('express');
 import bodyParser = require('body-parser');
-import projectRouter = require('./routes/ProjectRouter');
+import router = require('./routes/Router');
 
 export class WebApi {
 
@@ -23,7 +23,7 @@ export class WebApi {
    * @param app - express application
    */
   private configureRoutes(app: express.Express) {
-    app.use('/project', projectRouter);
+    app.use('/', router);
 
     // mount more routers here
     // e.g. app.use("/organisation", organisationRouter);

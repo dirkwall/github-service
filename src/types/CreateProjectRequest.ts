@@ -3,7 +3,7 @@ export interface CreateProjectRequest {
 }
 
 export interface Data {
-  application: string,
+  project: string;
   stages: Stage[];
 }
 
