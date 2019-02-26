@@ -346,12 +346,12 @@ export class GitHubService implements SourceOperator, EventHandler {
 
     let deploymentTemplate = await utils.readFileContent('keptn/github-operator/templates/service-template/deployment.tpl');
     deploymentTemplate = deploymentTemplate.replace(cAppNameRegex, serviceName);
-    deploymentTemplate = deploymentTemplate.replace(decAppNameRegex, decamelize(serviceName, '-'));
+    //TODO: activate: deploymentTemplate = deploymentTemplate.replace(decAppNameRegex, decamelize(serviceName, '-'));
     await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yaml`, deploymentTemplate, `[keptn]: Added deployment yaml template for new app: ${serviceName}`, { encode: true });
 
     let serviceTemplate = await utils.readFileContent('keptn/github-operator/templates/service-template/service.tpl');
     serviceTemplate = serviceTemplate.replace(cAppNameRegex, serviceName);
-    serviceTemplate = serviceTemplate.replace(decAppNameRegex, decamelize(serviceName, '-'));
+    //TODO: activate: serviceTemplate = serviceTemplate.replace(decAppNameRegex, decamelize(serviceName, '-'));
     await repo.writeFile(branch, `helm-chart/templates/${serviceName}-service.yaml`, serviceTemplate, `[keptn]: Added service yaml template for new app: ${serviceName}`, { encode: true }); 
   }
 
