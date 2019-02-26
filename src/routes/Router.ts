@@ -8,9 +8,10 @@ const router = express.Router();
 
 router.post('/', async (request: express.Request, response: express.Response) => {
 
-  console.log('In POST / from github-operator.');
+  console.log('DEBUG: in POST / from github-operator.');
+  console.log(request.body);
 
-  const eventtype : string = 'create';
+  const eventtype : string = '';
 
   if (eventtype === 'webhook') {
 
@@ -37,6 +38,8 @@ router.post('/', async (request: express.Request, response: express.Response) =>
         ],
       },
     };
+
+    console.log('DEBUG: start project creation.');
 
     const gitHub : SourceOperator = await GitHubService.getInstance();
     await gitHub.createProject(gitHubOrgName, payload);
