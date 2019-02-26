@@ -9,7 +9,7 @@ import { OnboardServiceRequest } from '../types/OnboardServiceRequest';
 import { Utils } from '../lib/Utils';
 import { base64encode, base64decode } from 'nodejs-base64';
 
-const decamelize = require('decamelize');
+// const decamelize = require('decamelize');
 const GitHub = require('github-api');
 const Mustache = require('mustache');
 const YAML = require('yamljs');
