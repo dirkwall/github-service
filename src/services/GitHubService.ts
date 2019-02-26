@@ -6,7 +6,7 @@ import { CreateProjectRequest, Stage } from '../types/CreateProjectRequest';
 import { KeptnGithubCredentials } from '../types/KeptnGithubCredentials';
 import { OnboardServiceRequest } from '../types/OnboardServiceRequest';
 
-import { Utils } from '../lib/utils';
+import { Utils } from '../lib/Utils';
 import { base64encode, base64decode } from 'nodejs-base64';
 
 const decamelize = require('decamelize');
