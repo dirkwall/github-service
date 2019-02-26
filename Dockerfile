@@ -6,9 +6,8 @@ RUN addgroup mygroup && adduser -D -G mygroup myuser && mkdir -p /usr/src/app &&
 
 # Prepare app directory
 WORKDIR /usr/src/app
-COPY . /usr/src/app
-
 USER myuser
+COPY . /usr/src/app
 RUN npm install
 
 # Start the app
