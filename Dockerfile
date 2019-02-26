@@ -6,9 +6,21 @@ RUN addgroup mygroup && adduser -D -G mygroup myuser && mkdir -p /usr/src/app &&
 
 # Prepare app directory
 WORKDIR /usr/src/app
-USER myuser
+
+COPY package.json /usr/src/app/
+
+RUN npm install -g tsc 
+RUN npm install -g concurrently 
+RUN npm install -g typescript
+
 COPY . /usr/src/app
+
+RUN ls -la /usr/src/app/*
+
 RUN npm install
+RUN npm run build-ts
+
+USER myuser
 
 # Start the app
 CMD ["/usr/local/bin/npm", "start"]
