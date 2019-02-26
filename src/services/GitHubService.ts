@@ -1,5 +1,4 @@
 import { SourceOperator } from './SourceOperator';
-import { EventHandler } from './EventHandler';
 import { CredentialsService } from './CredentialsService';
 
 import { CreateProjectRequest, Stage } from '../types/CreateProjectRequest';
@@ -20,7 +19,7 @@ const utils = new Utils();
 // Basic authentication
 let gh;
 
-export class GitHubService implements SourceOperator, EventHandler {
+export class GitHubService implements SourceOperator {
 
   private static instance: GitHubService;
 
@@ -35,10 +34,12 @@ export class GitHubService implements SourceOperator, EventHandler {
 
       // Initialize github api with user and token
       const credService: CredentialsService = CredentialsService.getInstance();
-      //const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
+      const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
       //gh.username = githubCreds.user;
       //gh.password = githubCreds.token;
-      //GitHubService.instance.gitHubOrg = githubCreds.org;
+      GitHubService.instance.gitHubOrg = githubCreds.org;
+
+      console.log(githubCreds.user);
 
       gh = new GitHub({
         username: '**',
@@ -150,7 +151,7 @@ export class GitHubService implements SourceOperator, EventHandler {
       if (e.response.statusText === 'Not Found') {
         console.log(`[keptn] Could not find organziation ${gitHubOrgName}.`);
         console.log(e.message);
-      } else if (e.response.statusText === 'Unprocessable Entity'){
+      } else if (e.response.statusText === 'Unprocessable Entity') {
         console.log(`[keptn] Repository ${payload.data.project} already available.`);
         console.log(e.message);
       }

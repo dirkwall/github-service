@@ -3,27 +3,24 @@ import { CreateProjectRequest } from '../types/CreateProjectRequest';
 import { OnboardServiceRequest } from '../types/OnboardServiceRequest';
 import { SourceOperator } from '../services/SourceOperator';
 import { GitHubService } from '../services/GitHubService';
-import { EventHandler } from '../services/EventHandler';
 
 const router = express.Router();
 
 router.post('/', async (request: express.Request, response: express.Response) => {
 
-  // TODO: check request body - CloudEvent
+  console.log('In POST / from github-operator.');
 
   const eventtype : string = 'create';
 
   if (eventtype === 'webhook') {
 
     // logic to handle a push or pull request event
-    const eventHandler : EventHandler = await GitHubService.getInstance();
-    eventHandler.handleEvent('', '');
 
   } else if (eventtype === 'create') {
     const gitHubOrgName = 'keptn-test';
     const payload : CreateProjectRequest = {
       data : {
-        project: 'sockshop18',
+        project: 'sockshop77',
         stages: [
           {
             name: 'dev',

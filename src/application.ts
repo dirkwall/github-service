@@ -16,7 +16,6 @@ export class WebApi {
    * @param app - express application
    */
   private configureMiddleware(app: express.Express) {
-    
   }
 
   /**
@@ -24,9 +23,6 @@ export class WebApi {
    */
   private configureRoutes(app: express.Express) {
     app.use('/', router);
-
-    // mount more routers here
-    // e.g. app.use("/organisation", organisationRouter);
   }
 
   public run() {
