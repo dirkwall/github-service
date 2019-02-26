@@ -15,10 +15,10 @@ This operator is designed to interact with GitHub for various keptn tasks.
     ~/github-operator
     ```
 
-1. To install the operator, execute the `kubectl apply -f ./manifests/operator/*` command: 
+1. To install the operator, run the `deploy.sh` script as shown below: 
 
     ```console
-    $ kubectl apply -f ./manifests/operator/*
+    $ ./deploy.sh <REGISTRY_URI> <GITHUB_API_TOKE>
     ```
 
 1. To verify the installation, run the following `kubectl` command: 

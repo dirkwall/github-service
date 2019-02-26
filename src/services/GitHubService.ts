@@ -1,9 +1,12 @@
 import { SourceOperator } from './SourceOperator';
-import { CreateProjectRequest, Stage } from '../types/CreateProjectRequest';
-import { Utils } from '../lib/utils';
 import { EventHandler } from './EventHandler';
-import { OnboardServiceRequest } from 'OnboardServiceRequest';
+import { CredentialsService } from './CredentialsService';
 
+import { CreateProjectRequest, Stage } from '../types/CreateProjectRequest';
+import { KeptnGithubCredentials } from '../types/KeptnGithubCredentials';
+import { OnboardServiceRequest } from '../types/OnboardServiceRequest';
+
+import { Utils } from '../lib/utils';
 import { base64encode, base64decode } from 'nodejs-base64';
 
 const decamelize = require('decamelize');
@@ -15,22 +18,33 @@ const YAML = require('yamljs');
 const utils = new Utils();
 
 // Basic authentication
-const gh = new GitHub({
-  username: '**',
-  password: '**',
-  auth: 'basic',
-});
+let gh;
 
 export class GitHubService implements SourceOperator, EventHandler {
 
   private static instance: GitHubService;
 
+  private gitHubOrg: string;
+
   private constructor() {
   }
 
-  static getInstance() {
+  static async getInstance() {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
+
+      // Initialize github api with user and token
+      const credService: CredentialsService = CredentialsService.getInstance();
+      //const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
+      //gh.username = githubCreds.user;
+      //gh.password = githubCreds.token;
+      //GitHubService.instance.gitHubOrg = githubCreds.org;
+
+      gh = new GitHub({
+        username: '**',
+        password: '**',
+        auth: 'basic',
+      });
     }
     return GitHubService.instance;
   }
@@ -211,13 +225,10 @@ export class GitHubService implements SourceOperator, EventHandler {
                              { encode: true });
 
         if (stage.deployment_strategy === 'blue_green_service') {
-          // Add istio gateway to stage
+          // add istio gateway to stage
           let gatewaySpec = await utils.readFileContent(
             'keptn/github-operator/templates/istio-manifests/gateway.tpl');
-          gatewaySpec = Mustache.render(gatewaySpec,
-                                        { 
-                                          application: payload.data.project,
-                                          stage: stage.name });
+          gatewaySpec = Mustache.render(gatewaySpec, { application: payload.data.project, stage: stage.name });
 
           await repo.writeFile(stage.name,
                                'helm-chart/templates/istio-gateway.yaml',
@@ -268,7 +279,7 @@ export class GitHubService implements SourceOperator, EventHandler {
 
         // microservice already defined in helm chart
         if (valuesObj[serviceName] !== undefined) {
-          console.log('[keptn] Service already available.')
+          console.log('[keptn] Service already available in this stage.')
         } else {
           await this.addArtifactsToBranch(repo, serviceName, stage, valuesObj);
         }
@@ -284,14 +295,14 @@ export class GitHubService implements SourceOperator, EventHandler {
   private async addArtifactsToBranch(repo: any, serviceName: string, stage: Stage, valuesObj: any) {
     let valuesTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/values.tpl');
     const valuesStr = Mustache.render(valuesTpl, { serviceName: serviceName });
-    
+
     // update values file
     valuesObj[serviceName] = YAML.parse(valuesStr);
     await repo.writeFile(stage.name, 'helm-chart/values.yml', YAML.stringify(valuesObj, 100), `[keptn]: Added entry for new app in values.yaml`, { encode: true });
-  
+
     // add deployment and service template
     await this.addDeploymentServiceTemplates(repo, serviceName, stage.name);
-   
+
     if (stage.deployment_strategy === 'blue_green_service') {
       const blueGreenValues = {};
 
@@ -337,7 +348,7 @@ export class GitHubService implements SourceOperator, EventHandler {
     deploymentTemplate = deploymentTemplate.replace(cAppNameRegex, serviceName);
     deploymentTemplate = deploymentTemplate.replace(decAppNameRegex, decamelize(serviceName, '-'));
     await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yaml`, deploymentTemplate, `[keptn]: Added deployment yaml template for new app: ${serviceName}`, { encode: true });
-    
+
     let serviceTemplate = await utils.readFileContent('keptn/github-operator/templates/service-template/service.tpl');
     serviceTemplate = serviceTemplate.replace(cAppNameRegex, serviceName);
     serviceTemplate = serviceTemplate.replace(decAppNameRegex, decamelize(serviceName, '-'));
@@ -353,7 +364,7 @@ export class GitHubService implements SourceOperator, EventHandler {
         environment: branchName
     });
     await configRepo.writeFile(branchName, `helm-chart/templates/istio-destination-rule-${appKey}.yaml`, destinationRuleTemplate, `[keptn-onboard]: added istio destination rule for ${appKey}`, { encode: true });
-    
+
     // create istio virtual service
     let virtualServiceTemplate = await utils.readFileContent('istio-manifests/virtual_service.tpl');
     virtualServiceTemplate = mustache.render(virtualServiceTemplate, {
@@ -392,11 +403,11 @@ export class GitHubService implements SourceOperator, EventHandler {
 
   private async getServiceTemplates(repo: any, branchName: string, serviceName: string) : Promise<void> {
 
-    let branch = await repo.getBranch(branchName);
-    let tree = await repo.getTree(branch.data.commit.sha);
-    
+    const branch = await repo.getBranch(branchName);
+    const tree = await repo.getTree(branch.data.commit.sha);
+
     // Get the content of helm-chart/templates
-    let helmChartTree = await repo.getTree(tree.data.tree.filter(item => item.path === 'helm-chart')[0].sha);
+    const helmChartTree = await repo.getTree(tree.data.tree.filter(item => item.path === 'helm-chart')[0].sha);
     let templateTree = await repo.getTree(helmChartTree.data.tree.filter(item => item.path === 'templates')[0].sha);
 
     return templateTree.data.tree.filter(item => item.path.indexOf(serviceName) === 0 &&

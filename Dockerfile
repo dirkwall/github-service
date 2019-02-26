@@ -6,13 +6,10 @@ RUN addgroup mygroup && adduser -D -G mygroup myuser && mkdir -p /usr/src/app &&
 
 # Prepare app directory
 WORKDIR /usr/src/app
-COPY package.json /usr/src/app/
-
+COPY . /usr/src/app
 
 USER myuser
 RUN npm install
-
-COPY . /usr/src/app
 
 # Start the app
 CMD ["/usr/local/bin/npm", "start"]
