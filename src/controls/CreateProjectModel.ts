@@ -1,4 +1,4 @@
-export interface CreateProjectRequest {
+export interface CreateProjectModel {
   data : Data;
 }
 

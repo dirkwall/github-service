@@ -1,4 +1,4 @@
-export interface OnboardServiceRequest {
+export interface OnboardServiceModel {
   data : Data;
 }
 

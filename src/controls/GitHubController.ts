@@ -1,7 +1,6 @@
 import express = require('express');
-import { CreateProjectRequest } from '../types/CreateProjectRequest';
-import { OnboardServiceRequest } from '../types/OnboardServiceRequest';
-import { SourceOperator } from '../services/SourceOperator';
+import { CreateProjectModel } from './CreateProjectModel';
+import { OnboardServiceModel } from './OnboardServiceModel';
 import { GitHubService } from '../services/GitHubService';
 
 const router = express.Router();
@@ -40,8 +39,8 @@ router.post('/', async (request: express.Request, response: express.Response) =>
 }
 */
 
-    const payload : CreateProjectRequest = request.body;
-    const gitHub : SourceOperator = await GitHubService.getInstance();
+    const payload : CreateProjectModel = request.body;
+    const gitHub : GitHubService = await GitHubService.getInstance();
     await gitHub.createProject('keptn-test' , payload);
 
   } else if (request.body.eventtype === 'service') {
@@ -55,8 +54,8 @@ router.post('/', async (request: express.Request, response: express.Response) =>
    }
 }
 */
-    const payload : OnboardServiceRequest = request.body;
-    const gitHub : SourceOperator = await GitHubService.getInstance();
+    const payload : OnboardServiceModel = request.body;
+    const gitHub : GitHubService = await GitHubService.getInstance();
     await gitHub.onboardService('keptn-test', payload);
 
   }

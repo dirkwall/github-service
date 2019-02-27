@@ -1,5 +1,5 @@
-import { KeptnGithubCredentials } from '../types/KeptnGithubCredentials';
-import { KeptnGithubCredentialsSecret } from '../types/KeptnGithubCredentialsSecret';
+import { GitHubCredentials } from '../types/GitHubCredentials';
+import { KeptnGitHubCredSecret } from '../types/KeptnGitHubCredSecret';
 
 import { base64encode } from 'nodejs-base64';
 
@@ -7,7 +7,7 @@ export class KeptnConfigSecretFactory {
 
   constructor() { }
 
-  createKeptnConfigSecret(creds: KeptnGithubCredentials): KeptnGithubCredentialsSecret {
+  createKeptnConfigSecret(creds: GitHubCredentials): KeptnGitHubCredSecret {
     creds.token = base64encode(creds.token);
     creds.user = base64encode(creds.user);
     creds.org = base64encode(creds.org);

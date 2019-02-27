@@ -1,13 +1,12 @@
-import { SourceOperator } from './SourceOperator';
 import { CredentialsService } from './CredentialsService';
 
-import { CreateProjectRequest, Stage } from '../types/CreateProjectRequest';
-import { KeptnGithubCredentials } from '../types/KeptnGithubCredentials';
-import { OnboardServiceRequest } from '../types/OnboardServiceRequest';
+import { CreateProjectModel, Stage } from '../controls/CreateProjectModel';
+import { OnboardServiceModel } from '../controls/OnboardServiceModel';
+import { GitHubCredentials } from '../types/GitHubCredentials';
 import { GitHubTreeModel , TreeItem } from '../types/GitHubTreeModel';
 
 import { Utils } from '../lib/Utils';
-import { base64encode, base64decode } from 'nodejs-base64';
+import { base64decode } from 'nodejs-base64';
 
 const decamelize = require('decamelize');
 const GitHub = require('github-api');
@@ -20,7 +19,7 @@ const utils = new Utils();
 // Basic authentication
 let gh;
 
-export class GitHubService implements SourceOperator {
+export class GitHubService {
 
   private static instance: GitHubService;
 
@@ -35,7 +34,7 @@ export class GitHubService implements SourceOperator {
 
       // Initialize github api with user and token
       const credService: CredentialsService = CredentialsService.getInstance();
-      const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
+      const githubCreds: GitHubCredentials = await credService.getGithubCredentials();
       GitHubService.gitHubOrg = githubCreds.org;
 
       console.log(`DEBUG: Using token of: ${githubCreds.user}`);
@@ -127,7 +126,7 @@ export class GitHubService implements SourceOperator {
   }
   */
 
-  async createProject(gitHubOrgName : string, payload : CreateProjectRequest) : Promise<any> {
+  async createProject(gitHubOrgName : string, payload : CreateProjectModel) : Promise<any> {
     const created: boolean = await this.createRepository(gitHubOrgName, payload);
     if (created) {
       await this.initialCommit(gitHubOrgName, payload);
@@ -138,7 +137,7 @@ export class GitHubService implements SourceOperator {
   }
 
   private async createRepository(gitHubOrgName : string,
-                                 payload : CreateProjectRequest) : Promise<boolean> {
+                                 payload : CreateProjectModel) : Promise<boolean> {
     const repository = {
       name : payload.data.project,
     };
@@ -159,7 +158,7 @@ export class GitHubService implements SourceOperator {
     return true;
   }
 
-  private async setHook(gitHubOrgName : string, payload : CreateProjectRequest) : Promise<any> {
+  private async setHook(gitHubOrgName : string, payload : CreateProjectModel) : Promise<any> {
     try {
       const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
 
@@ -183,7 +182,7 @@ export class GitHubService implements SourceOperator {
   }
 
   private async initialCommit(gitHubOrgName : string,
-                              payload : CreateProjectRequest) : Promise<any> {
+                              payload : CreateProjectModel) : Promise<any> {
     try {
       const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
 
@@ -198,7 +197,7 @@ export class GitHubService implements SourceOperator {
   }
 
   private async createBranchesForEachStages(gitHubOrgName : string,
-                                            payload : CreateProjectRequest) : Promise<any> {
+                                            payload : CreateProjectModel) : Promise<any> {
     try {
       const chart = {
         apiVersion: 'v1',
@@ -244,7 +243,7 @@ export class GitHubService implements SourceOperator {
   }
 
   private async addShipyardToMaster(gitHubOrgName : string,
-                                    payload : CreateProjectRequest) : Promise<any> {
+                                    payload : CreateProjectModel) : Promise<any> {
     try {
       const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
       await repo.writeFile('master',
@@ -258,7 +257,7 @@ export class GitHubService implements SourceOperator {
     }
   }
 
-  async onboardService(gitHubOrgName : string, payload : OnboardServiceRequest) : Promise<any> {
+  async onboardService(gitHubOrgName : string, payload : OnboardServiceModel) : Promise<any> {
     try {
       const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
 

@@ -1,6 +1,6 @@
 import express = require('express');
 import bodyParser = require('body-parser');
-import router = require('./routes/Router');
+import router = require('./controls/GitHubController');
 
 export class WebApi {
 

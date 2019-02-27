@@ -1,5 +1,5 @@
-import { KeptnGithubCredentials } from '../types/KeptnGithubCredentials';
-import { KeptnGithubCredentialsSecret } from '../types/KeptnGithubCredentialsSecret';
+import { GitHubCredentials } from '../types/GitHubCredentials';
+import { KeptnGitHubCredSecret } from '../types/KeptnGitHubCredSecret';
 import { KeptnConfigSecretFactory } from '../lib/KeptnConfigSecretFactory';
 import { K8sClientFactory } from '../lib/K8sClientFactory';
 
@@ -23,15 +23,15 @@ export class CredentialsService {
     return CredentialsService.instance;
   }
 
-  async updateGithubConfig(keptnConfig: KeptnGithubCredentials) {
+  async updateGithubConfig(keptnConfig: GitHubCredentials) {
     const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(keptnConfig);
 
     const created = await this.updateGithubCredentials(secret);
     console.log(created);
   }
 
-  async getGithubCredentials(): Promise<KeptnGithubCredentials> {
-    const gitHubCredentials: KeptnGithubCredentials = {
+  async getGithubCredentials(): Promise<GitHubCredentials> {
+    const gitHubCredentials: GitHubCredentials = {
       org: '',
       user: '',
       token: '',
@@ -55,7 +55,7 @@ export class CredentialsService {
     return gitHubCredentials;
   }
 
-  private async updateGithubCredentials(secret: KeptnGithubCredentialsSecret) {
+  private async updateGithubCredentials(secret: KeptnGitHubCredSecret) {
     try {
       const deleteResult = await this.k8sClient.api.v1
         .namespaces('keptn').secrets('github-credentials').delete();
