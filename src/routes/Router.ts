@@ -9,7 +9,7 @@ const router = express.Router();
 router.post('/', async (request: express.Request, response: express.Response) => {
 
   console.log('DEBUG: in POST / from github-operator.');
-  
+
   const eventtype : string = 'create';
 
   if (eventtype === 'webhook') {
@@ -20,7 +20,7 @@ router.post('/', async (request: express.Request, response: express.Response) =>
     const gitHubOrgName = 'keptn-test';
     const payload : CreateProjectRequest = {
       data : {
-        project: 'sockshop77',
+        project: 'sockshop99',
         stages: [
           {
             name: 'dev',
@@ -38,7 +38,7 @@ router.post('/', async (request: express.Request, response: express.Response) =>
       },
     };
 
-    console.log('DEBUG: start project creation.');
+    console.log('DEBUG: Start project creation.');
 
     const gitHub : SourceOperator = await GitHubService.getInstance();
     await gitHub.createProject(gitHubOrgName, payload);
@@ -48,7 +48,7 @@ router.post('/', async (request: express.Request, response: express.Response) =>
     const gitHubOrgName = 'keptn-test';
     const payload : OnboardServiceRequest = {
       data : {
-        project: 'sockshop17',
+        project: 'sockshop99',
         file: '',
       },
     };

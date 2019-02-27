@@ -4,6 +4,7 @@ import { CredentialsService } from './CredentialsService';
 import { CreateProjectRequest, Stage } from '../types/CreateProjectRequest';
 import { KeptnGithubCredentials } from '../types/KeptnGithubCredentials';
 import { OnboardServiceRequest } from '../types/OnboardServiceRequest';
+import { GitHubTreeModel , TreeItem } from '../types/GitHubTreeModel';
 
 import { Utils } from '../lib/Utils';
 import { base64encode, base64decode } from 'nodejs-base64';
@@ -34,12 +35,12 @@ export class GitHubService implements SourceOperator {
 
       // Initialize github api with user and token
       const credService: CredentialsService = CredentialsService.getInstance();
-      const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
+      //const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
       //gh.username = githubCreds.user;
       //gh.password = githubCreds.token;
-      GitHubService.instance.gitHubOrg = githubCreds.org;
+      //GitHubService.instance.gitHubOrg = githubCreds.org;
 
-      console.log(githubCreds.user);
+      //console.log(githubCreds.user);
 
       gh = new GitHub({
         username: '**',
@@ -129,6 +130,7 @@ export class GitHubService implements SourceOperator {
   */
 
   async createProject(gitHubOrgName : string, payload : CreateProjectRequest) : Promise<any> {
+    console.log('DEBUG: in createProject fkt.');
     const created: boolean = await this.createRepository(gitHubOrgName, payload);
     if (created) {
       await this.initialCommit(gitHubOrgName, payload);
@@ -266,7 +268,7 @@ export class GitHubService implements SourceOperator {
       const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
       const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
-      const serviceName = 'test1'; // get service name from payload
+      const serviceName = 'test12'; // get service name from payload
 
       shipyardlObj.stages.forEach(async stage => {
 
@@ -282,7 +284,7 @@ export class GitHubService implements SourceOperator {
         if (valuesObj[serviceName] !== undefined) {
           console.log('[keptn] Service already available in this stage.')
         } else {
-          await this.addArtifactsToBranch(repo, serviceName, stage, valuesObj);
+          await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName);
         }
 
       });
@@ -293,7 +295,7 @@ export class GitHubService implements SourceOperator {
     }
   }
 
-  private async addArtifactsToBranch(repo: any, serviceName: string, stage: Stage, valuesObj: any) {
+  private async addArtifactsToBranch(gitHubOrgName: string, repo: any, serviceName: string, stage: Stage, valuesObj: any, chartName: string) {
     let valuesTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/values.tpl');
     const valuesStr = Mustache.render(valuesTpl, { serviceName: serviceName });
 
@@ -321,23 +323,34 @@ export class GitHubService implements SourceOperator {
       await repo.writeFile(stage.name, `helm-chart/values.yaml`, YAML.stringify(blueGreenValues, 100), `[keptn]: added blue/green values`, {encode: true});
     
       // get templates for the service
-      const serviceTemplates = this.getServiceTemplates(repo, stage.name, serviceName);
+      const branch = await repo.getBranch(stage.name);
+      const gitHubRootTree: GitHubTreeModel = (await repo.getTree(branch.data.commit.sha)).data;
+
+      // Get the content of helm-chart/templates
+      const gitHubHelmTree : GitHubTreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
+      let gitHubTemplateTree : GitHubTreeModel = (await repo.getTree(gitHubHelmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
 
       // create blue/green yamls for each deployment/service
-      /*
-      for (let j = 0; j < serviceTemplates.length; j++) {
-        let template = serviceTemplates[j];
-        let decamelizedserviceName = decamelize(serviceName, '-');
+      
+      for (let j = 0; j < gitHubTemplateTree.tree.length; j++) {
 
-        let templateContentB64Enc = await repo.getContents(stage.name, `helm-chart/templates/${template.path}`);
-        let templateContent = base64decode(templateContentB64Enc.data.content);
+        const template : TreeItem = gitHubTemplateTree.tree[j];
 
-        if (template.path.indexOf('-service.yaml') > 0) {
-          await this.createIstioEntry(decamelizedserviceName, serviceName);
-        } else {
-          await this.createBlueGreenDeployment(serviceName, decamelizedserviceName, templateContent, template);
+        if (template => template.path.indexOf(serviceName) === 0 &&
+           (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
+           (template.path.indexOf('Blue') < 0) && (template.path.indexOf('Green') < 0)) {
+
+          const decamelizedserviceName = decamelize(serviceName, '-');
+          const templateContentB64Enc = await repo.getContents(stage.name, `helm-chart/templates/${template.path}`);
+          const templateContent = base64decode(templateContentB64Enc.data.content);
+
+          if (template.path.indexOf('-service.yaml') > 0) {
+            await this.createIstioEntry(gitHubOrgName, repo, decamelizedserviceName, serviceName, stage.name, chartName);
+          } else {
+            await this.createBlueGreenDeployment(serviceName, decamelizedserviceName, templateContent, template);
+          }
         }
-      } */
+      }
     }
   }
 
@@ -356,27 +369,26 @@ export class GitHubService implements SourceOperator {
     await repo.writeFile(branch, `helm-chart/templates/${serviceName}-service.yaml`, serviceTemplate, `[keptn]: Added service yaml template for new app: ${serviceName}`, { encode: true }); 
   }
 
-  async createIstioEntry(decamelizedAppKey : string, appKey : string) {
-    /*
-    let destinationRuleTemplate = await utils.readFileContent('istio-manifests/destination_rule.tpl');
-    destinationRuleTemplate = mustache.render(destinationRuleTemplate, {
-        serviceName: decamelizedAppKey,
-        chartName,
-        environment: branchName
+  async createIstioEntry(gitHubOrgName: string, repo: any, decamelizedServiceKey : string, serviceName : string, branch: string, chartName: string) {
+
+    let destinationRuleTemplate = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/destination_rule.tpl');
+    destinationRuleTemplate = Mustache.render(destinationRuleTemplate, {
+      serviceName: decamelizedServiceKey,
+      chartName,
+      environment: branch,
     });
-    await configRepo.writeFile(branchName, `helm-chart/templates/istio-destination-rule-${appKey}.yaml`, destinationRuleTemplate, `[keptn-onboard]: added istio destination rule for ${appKey}`, { encode: true });
+    await repo.writeFile(branch, `helm-chart/templates/istio-destination-rule-${serviceName}.yaml`, destinationRuleTemplate, `[keptn-onboard]: Added istio destination rule for ${serviceName}`, { encode: true });
 
     // create istio virtual service
-    let virtualServiceTemplate = await utils.readFileContent('istio-manifests/virtual_service.tpl');
-    virtualServiceTemplate = mustache.render(virtualServiceTemplate, {
-        gitHubOrg: gitHubOrgName,
-        serviceName: decamelizedAppKey,
-        chartName,
-        environment: branchName,
-        ingressGatewayIP: istioIngressGatewayService.ip
+    let virtualServiceTemplate = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/virtual_service.tpl');
+    virtualServiceTemplate = Mustache.render(virtualServiceTemplate, {
+      gitHubOrg: gitHubOrgName,
+      serviceName: decamelizedServiceKey,
+      chartName,
+      environment: branch,
+      //ingressGatewayIP: istioIngressGatewayService.ip
     });
-    await configRepo.writeFile(branchName, `helm-chart/templates/istio-virtual-service-${appKey}.yaml`, virtualServiceTemplate, `[keptn-onboard]: added istio virtual service for ${appKey}`, { encode: true });
-    */
+    await repo.writeFile(branch, `helm-chart/templates/istio-virtual-service-${serviceName}.yaml`, virtualServiceTemplate, `[keptn-onboard]: Added istio virtual service for ${serviceName}`, { encode: true });
   }
 
   async createBlueGreenDeployment(appKey, decamelizedAppKey, templateContent, template) {
@@ -400,19 +412,5 @@ export class GitHubService implements SourceOperator {
     // delete the original template
     await configRepo.deleteFile(branchName, `helm-chart/templates/${template.path}`);
     */
-  }
-
-  private async getServiceTemplates(repo: any, branchName: string, serviceName: string) : Promise<void> {
-
-    const branch = await repo.getBranch(branchName);
-    const tree = await repo.getTree(branch.data.commit.sha);
-
-    // Get the content of helm-chart/templates
-    const helmChartTree = await repo.getTree(tree.data.tree.filter(item => item.path === 'helm-chart')[0].sha);
-    let templateTree = await repo.getTree(helmChartTree.data.tree.filter(item => item.path === 'templates')[0].sha);
-
-    return templateTree.data.tree.filter(item => item.path.indexOf(serviceName) === 0 &&
-        (item.path.indexOf('yml') > -1 || item.path.indexOf('yaml') > -1) &&
-        (item.path.indexOf('Blue') < 0) && (item.path.indexOf('Green') < 0));
   }
 }
