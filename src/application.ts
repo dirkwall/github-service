@@ -9,6 +9,7 @@ export class WebApi {
    * @param port - port to listen on
    */
   constructor(private app: express.Express, private port: number) {
+    this.configureMiddleware(app);
     this.configureRoutes(app);
   }
 
@@ -16,6 +17,7 @@ export class WebApi {
    * @param app - express application
    */
   private configureMiddleware(app: express.Express) {
+    app.use(bodyParser.json());
   }
 
   /**
