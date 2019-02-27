@@ -13,5 +13,4 @@ cat config/operator.yaml | \
 kubectl apply -f config/gen/operator.yaml
 
 # Create secret for USER and API_TOKEN
-
 kubectl create secret generic -n keptn github-credentials --from-literal=gitorg="$GITHUB_ORG" --from-literal=gituser="$GITHUB_USER" --from-literal=gittoken="$GITHUB_API_TOKEN"

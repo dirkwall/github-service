@@ -8,54 +8,56 @@ const router = express.Router();
 
 router.post('/', async (request: express.Request, response: express.Response) => {
 
-  console.log('DEBUG: in POST / from github-operator. Request obj:');
+  console.log('DEBUG: in POST / from github-operator');
   console.log(request.body);
 
-  const eventtype : string = 'create';
-
-  if (eventtype === 'webhook') {
+  if (request.body.eventtype === 'webhook') {
 
     // logic to handle a push or pull request event
 
-  } else if (eventtype === 'create') {
-    const gitHubOrgName = 'keptn-test';
-    const payload : CreateProjectRequest = {
-      data : {
-        project: 'sockshop99',
-        stages: [
-          {
-            name: 'dev',
-            deployment_strategy: 'direct',
-          },
-          {
-            name: 'staging',
-            deployment_strategy: 'blue_green_service',
-          },
-          {
-            name: 'production',
-            deployment_strategy: 'blue_green_service',
-          },
-        ],
-      },
-    };
+  } else if (request.body.eventtype === 'project') {
 
-    console.log('DEBUG: Start project creation.');
+/*
+{
+	"eventtype" : "project",
+	"data" : {
+      "project": "sockshop98",
+      "stages": [
+        {
+            "name": "dev",
+            "deployment_strategy": "direct"
+        },
+        {
+            "name": "staging",
+            "deployment_strategy": "blue_green_service"
+        },
+        {
+            "name": "production",
+            "deployment_strategy": "blue_green_service"
+        }
+	    ]
+   }
+}
+*/
 
+    const payload : CreateProjectRequest = request.body;
     const gitHub : SourceOperator = await GitHubService.getInstance();
-    await gitHub.createProject(gitHubOrgName, payload);
+    await gitHub.createProject('keptn-test' , payload);
 
-  } else if (eventtype === 'onboard') {
+  } else if (request.body.eventtype === 'service') {
 
-    const gitHubOrgName = 'keptn-test';
-    const payload : OnboardServiceRequest = {
-      data : {
-        project: 'sockshop99',
-        file: '',
-      },
-    };
-
+/*
+{
+	"eventtype" : "service",
+	"data" : {
+      "project" : "sockshop99",
+      "file" : ""
+   }
+}
+*/
+    const payload : OnboardServiceRequest = request.body;
     const gitHub : SourceOperator = await GitHubService.getInstance();
-    await gitHub.onboardService(gitHubOrgName, payload);
+    await gitHub.onboardService('keptn-test', payload);
 
   }
 

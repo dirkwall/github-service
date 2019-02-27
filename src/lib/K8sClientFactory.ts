@@ -5,7 +5,6 @@ export class K8sClientFactory {
   constructor() {}
 
   createK8sClient(): Api.ApiRoot {
-    // tslint:disable-next-line: variable-name
     const Client = Api.Client1_10;
     const config = Api.config;
     let k8sClient;

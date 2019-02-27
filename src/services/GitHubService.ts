@@ -24,7 +24,7 @@ export class GitHubService implements SourceOperator {
 
   private static instance: GitHubService;
 
-  private gitHubOrg: string;
+  public static gitHubOrg: string;
 
   private constructor() {
   }
@@ -33,16 +33,12 @@ export class GitHubService implements SourceOperator {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
 
-      console.log('DEBUG: Creating instance, ... ');
-
       // Initialize github api with user and token
       const credService: CredentialsService = CredentialsService.getInstance();
       const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
-      //gh.username = githubCreds.user;
-      //gh.password = githubCreds.token;
-      //GitHubService.instance.gitHubOrg = githubCreds.org;
+      GitHubService.gitHubOrg = githubCreds.org;
 
-      console.log(`DEBUG: ${githubCreds.user}`);
+      console.log(`DEBUG: Using token of: ${githubCreds.user}`);
 
       gh = new GitHub({
         username: githubCreds.user,
@@ -132,7 +128,6 @@ export class GitHubService implements SourceOperator {
   */
 
   async createProject(gitHubOrgName : string, payload : CreateProjectRequest) : Promise<any> {
-    console.log('DEBUG: in createProject fkt.');
     const created: boolean = await this.createRepository(gitHubOrgName, payload);
     if (created) {
       await this.initialCommit(gitHubOrgName, payload);
@@ -270,7 +265,7 @@ export class GitHubService implements SourceOperator {
       const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
       const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
-      const serviceName = 'test12'; // get service name from payload
+      const serviceName = 'test12'; // TODO: Get service name from payload
 
       shipyardlObj.stages.forEach(async stage => {
 
@@ -282,11 +277,17 @@ export class GitHubService implements SourceOperator {
         const chartObj = YAML.parse(base64decode(chartYaml.data.content));
         const chartName = chartObj.name;
 
-        // microservice already defined in helm chart
+        // service already defined in helm chart
         if (valuesObj[serviceName] !== undefined) {
-          console.log('[keptn] Service already available in this stage.')
+          console.log('[keptn] Service already available in this stage.');
         } else {
-          await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName);
+          await this.addArtifactsToBranch(gitHubOrgName,
+                                          repo,
+                                          serviceName,
+                                          stage,
+                                          valuesObj,
+                                          chartName,
+                                          );
         }
 
       });
