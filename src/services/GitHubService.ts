@@ -33,18 +33,20 @@ export class GitHubService implements SourceOperator {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
 
+      console.log('DEBUG: Creating instance, ... ');
+
       // Initialize github api with user and token
       const credService: CredentialsService = CredentialsService.getInstance();
-      //const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
+      const githubCreds: KeptnGithubCredentials = await credService.getGithubCredentials();
       //gh.username = githubCreds.user;
       //gh.password = githubCreds.token;
       //GitHubService.instance.gitHubOrg = githubCreds.org;
 
-      //console.log(githubCreds.user);
+      console.log(`DEBUG: ${githubCreds.user}`);
 
       gh = new GitHub({
-        username: '**',
-        password: '**',
+        username: githubCreds.user,
+        password: githubCreds.token,
         auth: 'basic',
       });
     }
