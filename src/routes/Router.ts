@@ -8,8 +8,8 @@ const router = express.Router();
 
 router.post('/', async (request: express.Request, response: express.Response) => {
 
-  console.log('DEBUG: in POST / from github-operator. BODY:');
-  console.log(request.body);
+  console.log('DEBUG: in POST / from github-operator. Request obj:');
+  console.log(request);
 
   const eventtype : string = 'create';
 
