@@ -37,12 +37,15 @@ export class CredentialsService {
       token: '',
     };
 
+    console.log('DEBUG: get github credentials: ');
+
     const secret = await this.k8sClient.api.v1
       .namespaces('keptn').secrets
       .get({ name: 'github-credentials', pretty: true, exact: true, export: true });
 
     if (secret.body.items && secret.body.items.length > 0) {
       const ghItem = secret.body.items.find(item => item.metadata.name === 'github-credentials');
+      console.log(ghItem);
       if (ghItem && ghItem.data !== undefined) {
         gitHubCredentials.org = base64decode(ghItem.data.gitorg);
         gitHubCredentials.user = base64decode(ghItem.data.gituser);
