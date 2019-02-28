@@ -34,7 +34,7 @@ export class GitHubService {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
 
-      // Initialize github api with user and token
+      // initialize github api with user and token
       const credService: CredentialsService = CredentialsService.getInstance();
       const githubCreds: GitHubCredentials = await credService.getGithubCredentials();
       GitHubService.gitHubOrg = githubCreds.org;
@@ -101,8 +101,8 @@ export class GitHubService {
 
   private async setHook(repo : any, payload : CreateProjectModel) : Promise<any> {
     try {
-      //const istioIngressGatewayService = await utils.getK8sServiceUrl('istio-ingressgateway', 'istio-system');
-      //const eventBrokerUri = `event-broker.keptn.${istioIngressGatewayService.ip}.xip.io`;
+      //TODO: const istioIngressGatewayService = await utils.getK8sServiceUrl('istio-ingressgateway', 'istio-system');
+      //TODO: const eventBrokerUri = `event-broker.keptn.${istioIngressGatewayService.ip}.xip.io`;
       const eventBrokerUri = 'need-to-be-set';
 
       await repo.createHook({
@@ -158,8 +158,7 @@ export class GitHubService {
 
         if (stage.deployment_strategy === 'blue_green_service') {
           // add istio gateway to stage
-          let gatewaySpec = await utils.readFileContent(
-            'keptn/github-operator/templates/istio-manifests/gateway.tpl');
+          let gatewaySpec = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/gateway.tpl');
           gatewaySpec = Mustache.render(gatewaySpec, { application: payload.data.project, stage: stage.name });
 
           await repo.writeFile(stage.name,
@@ -190,36 +189,42 @@ export class GitHubService {
   }
 
   async onboardService(gitHubOrgName : string, payload : OnboardServiceModel) : Promise<any> {
-    try {
-      const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
+    
+    if ( payload.data.values && payload.data.values.service ) {
 
-      const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
-      const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
-
-      const serviceName = payload.data.values.service.name; 
-
-      shipyardlObj.stages.forEach(async stage => {
-
-        const valuesYaml = await repo.getContents(stage.name, 'helm-chart/values.yml');
-        let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
-        if (valuesObj == undefined) { valuesObj = {}; }
-
-        const chartYaml = await repo.getContents(stage.name, 'helm-chart/Chart.yml');
-        const chartObj = YAML.parse(base64decode(chartYaml.data.content));
-        const chartName = chartObj.name;
-
-        // service already defined in helm chart
-        if (valuesObj[serviceName] !== undefined) {
-          console.log('[keptn] Service already available in this stage.');
-        } else {
-          await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName, payload );
-        }
-
-      });
-
-    } catch (e) {
-      console.log('[keptn] Onboarding service failed.');
-      console.log(e.message);
+      const serviceName = payload.data.values.service.name;
+      try {
+        const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
+  
+        const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
+        const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
+  
+        shipyardlObj.stages.forEach(async stage => {
+  
+          const valuesYaml = await repo.getContents(stage.name, 'helm-chart/values.yml');
+          let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
+          if (valuesObj == undefined) { valuesObj = {}; }
+  
+          const chartYaml = await repo.getContents(stage.name, 'helm-chart/Chart.yml');
+          const chartObj = YAML.parse(base64decode(chartYaml.data.content));
+          const chartName = chartObj.name;
+  
+          // service already defined in helm chart
+          if (valuesObj[serviceName] !== undefined) {
+            console.log(`[keptn] Service already available in stage: ${stage.name}.`);
+          } else {
+            console.log(`[keptn] Adding artifacts to: ${stage.name}.`);
+            await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName, payload );
+          }
+  
+        });
+  
+      } catch (e) {
+        console.log('[keptn] Onboarding service failed.');
+        console.log(e.message);
+      }
+    } else {
+      console.log('[keptn] Payload does not contain data.values.');
     }
   }
 
@@ -251,7 +256,7 @@ export class GitHubService {
       const branch = await repo.getBranch(stage.name);
       const gitHubRootTree: GitHubTreeModel = (await repo.getTree(branch.data.commit.sha)).data;
 
-      // Get the content of helm-chart/templates
+      // get the content of helm-chart/templates
       const gitHubHelmTree : GitHubTreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
       let gitHubTemplateTree : GitHubTreeModel = (await repo.getTree(gitHubHelmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
 
