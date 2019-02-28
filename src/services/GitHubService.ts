@@ -1,7 +1,8 @@
 import { CredentialsService } from './CredentialsService';
 
-import { CreateProjectModel, Stage } from '../controls/CreateProjectModel';
+import { CreateProjectModel } from '../controls/CreateProjectModel';
 import { OnboardServiceModel } from '../controls/OnboardServiceModel';
+import { Stage } from '../types/ShipyardModel';
 import { GitHubCredentials } from '../types/GitHubCredentials';
 import { GitHubTreeModel , TreeItem } from '../types/GitHubTreeModel';
 

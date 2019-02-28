@@ -1,13 +1,19 @@
-export interface CreateProjectModel {
-  data : Data;
-}
+import { Shipyard } from '../types/ShipyardModel';
+import { ApiModel, ApiModelProperty, SwaggerDefinitionConstant } from 'swagger-express-ts';
 
-export interface Data {
-  project: string;
-  stages: Stage[];
-}
-
-export interface Stage {
-  name: string;
-  deployment_strategy: string;
+@ApiModel({
+  description: '',
+  name: 'CreateProjectModel',
+})
+export class CreateProjectModel {
+  @ApiModelProperty({
+    description: 'Object containing the required shipyard',
+    example: [{
+      project: 'Sockshop',
+      stages: 'List of stage definitions',
+    }],
+    type: SwaggerDefinitionConstant.Model.Type.OBJECT,
+    required: true,
+  })
+  data : Shipyard;
 }

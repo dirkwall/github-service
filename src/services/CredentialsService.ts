@@ -5,7 +5,7 @@ import { K8sClientFactory } from '../lib/K8sClientFactory';
 
 import * as K8sApi from 'kubernetes-client';
 
-import { base64encode, base64decode } from 'nodejs-base64';
+import { base64decode } from 'nodejs-base64';
 
 export class CredentialsService {
 
@@ -23,19 +23,16 @@ export class CredentialsService {
     return CredentialsService.instance;
   }
 
-  async updateGithubConfig(keptnConfig: GitHubCredentials) {
-    const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(keptnConfig);
-
-    const created = await this.updateGithubCredentials(secret);
-    console.log(created);
+  async updateGithubConfig(gitCreds: GitHubCredentials) {
+    if(gitCreds != undefined && gitCreds.areCredentialsDefined()) {
+      const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(gitCreds);
+      const created = await this.updateGithubCredentials(secret);
+      console.log(created);
+    }
   }
 
   async getGithubCredentials(): Promise<GitHubCredentials> {
-    const gitHubCredentials: GitHubCredentials = {
-      org: '',
-      user: '',
-      token: '',
-    };
+    const gitHubCredentials: GitHubCredentials = new GitHubCredentials();
 
     const secret = await this.k8sClient.api.v1
       .namespaces('keptn').secrets
@@ -56,18 +53,17 @@ export class CredentialsService {
   }
 
   private async updateGithubCredentials(secret: KeptnGitHubCredSecret) {
-    try {
-      const deleteResult = await this.k8sClient.api.v1
-        .namespaces('keptn').secrets('github-credentials').delete();
-      console.log(deleteResult);
-    } catch (e) {
-      console.log('Can not delete credentials');
+    if(secret != undefined) {
+      try {
+        const deleteResult = await this.k8sClient.api.v1
+          .namespaces('keptn').secrets('github-credentials').delete();
+      } catch (e) {
+        console.log('Can not delete credentials');
+      }
+  
+      const created = await this.k8sClient.api.v1.namespaces('keptn').secrets.post({
+        body: secret,
+      });
     }
-
-    const created = await this.k8sClient.api.v1.namespaces('keptn').secrets.post({
-      body: secret,
-    });
-
-    return created;
   }
 }

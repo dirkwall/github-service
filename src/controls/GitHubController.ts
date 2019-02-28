@@ -58,47 +58,15 @@ export class GitHubController implements interfaces.Controller {
   
     } else if (request.body.eventType === 'project') {
   
-  /*
-  {
-    "eventType" : "project",
-    "data" : {
-        "project": "sockshop98",
-        "stages": [
-          {
-              "name": "dev",
-              "deployment_strategy": "direct"
-          },
-          {
-              "name": "staging",
-              "deployment_strategy": "blue_green_service"
-          },
-          {
-              "name": "production",
-              "deployment_strategy": "blue_green_service"
-          }
-        ]
-     }
-  }
-  */
-  
       const payload : CreateProjectModel = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.createProject('keptn-test' , payload);
+      await gitHub.createProject(GitHubService.gitHubOrg , payload);
   
     } else if (request.body.eventType === 'service') {
   
-  /*
-  {
-    "eventType" : "service",
-    "data" : {
-        "project" : "sockshop99",
-        "file" : ""
-     }
-  }
-  */
       const payload : OnboardServiceModel = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.onboardService('keptn-test', payload);
+      await gitHub.onboardService(GitHubService.gitHubOrg, payload);
   
     }
   

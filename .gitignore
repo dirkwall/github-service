@@ -1,6 +1,9 @@
 # Auto-generated files
 config/gen/operator.yaml
 
+# nyc output
+.nyc_output
+
 # Logs
 *.log
 
