@@ -4,5 +4,6 @@ export interface OnboardServiceModel {
 
 export interface Data {
   project: string;
-  file: string;
+  values: any;
+  templates: any;
 }

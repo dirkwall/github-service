@@ -27,12 +27,14 @@ describe('CredentialsService', () => {
 
     newGitCreds = new GitHubCredentials();
     newGitCreds.org='keptn-org';
-    await credService.updateGithubConfig(newGitCreds);
+    credService.updateGithubConfig(newGitCreds);
 
     newGitCreds.user='keptn';
     newGitCreds.user='abc123';
-    await credService.updateGithubConfig(newGitCreds);
+    let updated : boolean = await credService.updateGithubConfig(newGitCreds);
 
-    await credService.updateGithubConfig(gitCreds);
+    if(updated) {
+      await credService.updateGithubConfig(gitCreds);
+    }
   });
 });

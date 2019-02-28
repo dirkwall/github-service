@@ -5,11 +5,13 @@ import {
   controller,
   httpGet,
   httpPost,
+  httpDelete,
   interfaces,
 } from 'inversify-express-utils';
 import {
   ApiOperationGet,
   ApiOperationPost,
+  ApiOperationDelete,
   ApiPath,
   SwaggerDefinitionConstant,
 } from 'swagger-express-ts';
@@ -69,6 +71,38 @@ export class GitHubController implements interfaces.Controller {
       await gitHub.onboardService(GitHubService.gitHubOrg, payload);
   
     }
+  
+    const result = {
+      result: 'success',
+    };
+  
+    response.send(result);
+  }
+
+  @ApiOperationDelete({
+    description: 'Delete elements',
+    parameters: {
+    },
+    responses: {
+      200: {
+      },
+    },
+    summary: 'Delete elements',
+  })
+  @httpDelete('/')
+  public async deleteElement(
+    request: express.Request,
+    response: express.Response,
+    next: express.NextFunction,
+  ): Promise<void> {
+ 
+    if (request.body.eventType === 'project') {
+  
+      const payload : CreateProjectModel = request.body;
+      const gitHub : GitHubService = await GitHubService.getInstance();
+      await gitHub.deleteProject(GitHubService.gitHubOrg , payload);
+  
+    } 
   
     const result = {
       result: 'success',
