@@ -51,14 +51,8 @@ export class GitHubController implements interfaces.Controller {
     response: express.Response,
     next: express.NextFunction,
   ): Promise<void> {
-    console.log('DEBUG: in POST / from github-operator');
-    console.log(request.body);
   
-    if (request.body.eventType === 'webhook') {
-  
-      // logic to handle a push or pull request event
-  
-    } else if (request.body.eventType === 'project') {
+    if (request.body.eventType === 'project') {
   
       const payload : CreateProjectModel = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
