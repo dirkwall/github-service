@@ -77,8 +77,7 @@ export class GitHubService {
     return deleted;
   }
 
-  private async createRepository(gitHubOrgName : string,
-                                 payload : CreateProjectModel) : Promise<boolean> {
+  private async createRepository(gitHubOrgName : string, payload : CreateProjectModel) : Promise<boolean> {
     const repository = {
       name : payload.data.project,
     };

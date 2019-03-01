@@ -20,6 +20,8 @@ import { CreateProjectModel } from './CreateProjectModel';
 import { OnboardServiceModel } from './OnboardServiceModel';
 import { GitHubService } from '../services/GitHubService';
 
+import { CloudEvent } from 'cloudevent';
+
 @ApiPath({
   name: 'GitHub',
   path: '/',
@@ -59,16 +61,16 @@ export class GitHubController implements interfaces.Controller {
   
       console.log("DEBUG: start project creation.")
 
-      const payload : CreateProjectModel = request.body;
+      const payload : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
       await gitHub.createProject(GitHubService.gitHubOrg , payload);
   
     } else if (request.body.eventType == 'service') {
   
-      const payload : OnboardServiceModel = request.body;
+      const payload : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
       await gitHub.onboardService(GitHubService.gitHubOrg, payload);
-  
+
     }
   
     const result = {
