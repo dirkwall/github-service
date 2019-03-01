@@ -4,10 +4,9 @@
   "description": "GitHub Operator",
   "main": "dist/server.js",
   "scripts": {
-    "build-ts": "tsc && npm run html",
+    "build-ts": "tsc",
     "start": "npm run serve",
     "serve": "node dist/server.js",
-    "html": "copyfiles src/**/*.html src/**/*.css dist/",
     "watch-node": "nodemon dist/server.js",
     "watch-ts": "tsc -w",
     "dev": "nodemon",
