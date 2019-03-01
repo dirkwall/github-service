@@ -53,9 +53,13 @@ export class GitHubController implements interfaces.Controller {
   ): Promise<void> {
   
     console.log(request.body);
+    console.log(request.body.eventType);
+    console.log(request.body.data.eventType);
 
     if (request.body.eventType === 'project') {
   
+      console.log("DEBUG: start project creation.")
+
       const payload : CreateProjectModel = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
       await gitHub.createProject(GitHubService.gitHubOrg , payload);
