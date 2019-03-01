@@ -158,7 +158,7 @@ export class GitHubService {
 
         if (stage.deployment_strategy === 'blue_green_service') {
           // add istio gateway to stage
-          let gatewaySpec = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/gateway.tpl');
+          let gatewaySpec = await utils.readFileContent('./templates/istio-manifests/gateway.tpl');
           gatewaySpec = Mustache.render(gatewaySpec, { application: payload.data.project, stage: stage.name });
 
           await repo.writeFile(stage.name,
@@ -199,8 +199,8 @@ export class GitHubService {
         const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
         const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
   
-        shipyardlObj.stages.forEach(async stage => {
-  
+        //shipyardlObj.stages.forEach(async stage => {     
+        await Promise.all(shipyardlObj.stages.map(async (stage) => {
           const valuesYaml = await repo.getContents(stage.name, 'helm-chart/values.yml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
           if (valuesObj == undefined) { valuesObj = {}; }
@@ -216,8 +216,7 @@ export class GitHubService {
             console.log(`[keptn] Adding artifacts to: ${stage.name}.`);
             await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName, payload );
           }
-  
-        });
+        }));
   
       } catch (e) {
         console.log('[keptn] Onboarding service failed.');
@@ -287,13 +286,13 @@ export class GitHubService {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
-    let deploymentTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/deployment.tpl');
+    let deploymentTpl = await utils.readFileContent('./templates/service-template/deployment.tpl');
     deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
     deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
     // TODO: let deploymentTpl = payload.data.templates.deployment
     await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yml`, deploymentTpl, `[keptn]: Added deployment yml template for app: ${serviceName}.`, { encode: true });
 
-    let serviceTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/service.tpl');
+    let serviceTpl = await utils.readFileContent('./templates/service-template/service.tpl');
     serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
     serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
     // TODO: let serviceTpl = payload.data.templates.service
@@ -302,7 +301,7 @@ export class GitHubService {
 
   async createIstioEntry(gitHubOrgName: string, repo: any, decamelizedServiceKey : string, serviceName : string, branch: string, chartName: string) {
     // create destination rule
-    let destinationRuleTpl = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/destination_rule.tpl');
+    let destinationRuleTpl = await utils.readFileContent('./templates/istio-manifests/destination_rule.tpl');
     destinationRuleTpl = Mustache.render(destinationRuleTpl, {
       serviceName: decamelizedServiceKey,
       chartName,
@@ -311,7 +310,7 @@ export class GitHubService {
     await repo.writeFile(branch, `helm-chart/templates/istio-destination-rule-${serviceName}.yml`, destinationRuleTpl, `[keptn]: Added istio destination rule for ${serviceName}.`, { encode: true });
 
     // create istio virtual service
-    let virtualServiceTpl = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/virtual_service.tpl');
+    let virtualServiceTpl = await utils.readFileContent('./templates/istio-manifests/virtual_service.tpl');
     virtualServiceTpl = Mustache.render(virtualServiceTpl, {
       gitHubOrg: gitHubOrgName,
       serviceName: decamelizedServiceKey,

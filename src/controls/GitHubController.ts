@@ -52,6 +52,8 @@ export class GitHubController implements interfaces.Controller {
     next: express.NextFunction,
   ): Promise<void> {
   
+    console.log(request.body);
+
     if (request.body.eventType === 'project') {
   
       const payload : CreateProjectModel = request.body;
