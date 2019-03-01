@@ -61,15 +61,17 @@ export class GitHubController implements interfaces.Controller {
   
       console.log("DEBUG: start project creation.")
 
-      const payload : CloudEvent = request.body;
+      const cloudEvent : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.createProject(GitHubService.gitHubOrg , payload);
+      await gitHub.createProject(GitHubService.gitHubOrg , cloudEvent);
   
     } else if (request.body.eventType == 'service') {
+
+      console.log("DEBUG: start service creation.")
   
-      const payload : CloudEvent = request.body;
+      const cloudEvent : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.onboardService(GitHubService.gitHubOrg, payload);
+      await gitHub.onboardService(GitHubService.gitHubOrg, cloudEvent);
 
     }
   
@@ -113,4 +115,3 @@ export class GitHubController implements interfaces.Controller {
   }
 
 }
-

@@ -48,28 +48,28 @@ export class GitHubService {
     return GitHubService.instance;
   }
 
-  async createProject(gitHubOrgName : string, payload : CreateProjectModel) : Promise<boolean> {
-    const created: boolean = await this.createRepository(gitHubOrgName, payload);
+  async createProject(gitHubOrgName : string, cloudEvent : CreateProjectModel) : Promise<boolean> {
+    const created: boolean = await this.createRepository(gitHubOrgName, cloudEvent);
     if (created) {
-      const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
+      const repo = await gh.getRepo(gitHubOrgName, cloudEvent.data.project);
 
-      await this.initialCommit(repo, payload);
-      await this.createBranchesForEachStages(repo, payload);
-      await this.addShipyardToMaster(repo, payload);
-      await this.setHook(repo, payload);
+      await this.initialCommit(repo, cloudEvent);
+      await this.createBranchesForEachStages(repo, cloudEvent);
+      await this.addShipyardToMaster(repo, cloudEvent);
+      await this.setHook(repo, cloudEvent);
     }
     return created;
   }
 
-  async deleteProject(gitHubOrgName : string, payload : CreateProjectModel) : Promise<boolean> {
+  async deleteProject(gitHubOrgName : string, cloudEvent : CreateProjectModel) : Promise<boolean> {
     let deleted = false;
     try {
-      const repo = await gh.getRepo(payload.data.project);
+      const repo = await gh.getRepo(cloudEvent.data.project);
       deleted = await repo.deleteRepo();
     } catch (e) {
       if (e.response.statusText != undefined) {
         if (e.response.statusText === 'Not Found') {
-          console.log(`[keptn] Could not find repository ${payload.data.project}.`);
+          console.log(`[keptn] Could not find repository ${cloudEvent.data.project}.`);
           console.log(e.message);
         }
       }
@@ -77,9 +77,9 @@ export class GitHubService {
     return deleted;
   }
 
-  private async createRepository(gitHubOrgName : string, payload : CreateProjectModel) : Promise<boolean> {
+  private async createRepository(gitHubOrgName : string, cloudEvent : CreateProjectModel) : Promise<boolean> {
     const repository = {
-      name : payload.data.project,
+      name : cloudEvent.data.project,
     };
 
     try {
@@ -90,7 +90,7 @@ export class GitHubService {
         console.log(`[keptn] Could not find organziation ${gitHubOrgName}.`);
         console.log(e.message);
       } else if (e.response.statusText === 'Unprocessable Entity') {
-        console.log(`[keptn] Repository ${payload.data.project} already available.`);
+        console.log(`[keptn] Repository ${cloudEvent.data.project} already available.`);
         console.log(e.message);
       }
       return false;
@@ -98,7 +98,7 @@ export class GitHubService {
     return true;
   }
 
-  private async setHook(repo : any, payload : CreateProjectModel) : Promise<any> {
+  private async setHook(repo : any, cloudEvent : CreateProjectModel) : Promise<any> {
     try {
       //TODO: const istioIngressGatewayService = await utils.getK8sServiceUrl('istio-ingressgateway', 'istio-system');
       //TODO: const eventBrokerUri = `event-broker.keptn.${istioIngressGatewayService.ip}.xip.io`;
@@ -119,11 +119,11 @@ export class GitHubService {
     }
   }
 
-  private async initialCommit(repo : any, payload : CreateProjectModel) : Promise<any> {
+  private async initialCommit(repo : any, cloudEvent : CreateProjectModel) : Promise<any> {
     try {
       await repo.writeFile('master',
                            'README.md',
-                           `# keptn takes care of your ${payload.data.project}`,
+                           `# keptn takes care of your ${cloudEvent.data.project}`,
                            '[keptn]: Initial commit', { encode: true });
     } catch (e) {
       console.log('[keptn] Initial commit failed.');
@@ -131,7 +131,7 @@ export class GitHubService {
     }
   }
 
-  private async createBranchesForEachStages(repo : any, payload : CreateProjectModel) : Promise<any> {
+  private async createBranchesForEachStages(repo : any, cloudEvent : CreateProjectModel) : Promise<any> {
     try {
       const chart = {
         apiVersion: 'v1',
@@ -140,7 +140,7 @@ export class GitHubService {
         version: '0.1.0'
       };
 
-      payload.data.stages.forEach(async stage => {
+      cloudEvent.data.stages.forEach(async stage => {
         await repo.createBranch('master', stage.name );
 
         await repo.writeFile(stage.name,
@@ -158,7 +158,7 @@ export class GitHubService {
         if (stage.deployment_strategy === 'blue_green_service') {
           // add istio gateway to stage
           let gatewaySpec = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/gateway.tpl');
-          gatewaySpec = Mustache.render(gatewaySpec, { application: payload.data.project, stage: stage.name });
+          gatewaySpec = Mustache.render(gatewaySpec, { application: cloudEvent.data.project, stage: stage.name });
 
           await repo.writeFile(stage.name,
                                'helm-chart/templates/istio-gateway.yml',
@@ -173,12 +173,11 @@ export class GitHubService {
     }
   }
 
-  private async addShipyardToMaster(repo: any,
-                                    payload : CreateProjectModel) : Promise<any> {
+  private async addShipyardToMaster(repo: any, cloudEvent : CreateProjectModel) : Promise<any> {
     try {
       await repo.writeFile('master',
                            'shipyard.yml',
-                           YAML.stringify(payload.data),
+                           YAML.stringify(cloudEvent.data),
                            '[keptn]: Added shipyard containing the definition of each stage.',
                            { encode: true });
     } catch (e) {
@@ -187,13 +186,13 @@ export class GitHubService {
     }
   }
 
-  async onboardService(gitHubOrgName : string, payload : OnboardServiceModel) : Promise<any> {
+  async onboardService(gitHubOrgName : string, cloudEvent : OnboardServiceModel) : Promise<any> {
     
-    if ( payload.data.values && payload.data.values.service ) {
+    if ( cloudEvent.data.values && cloudEvent.data.values.service ) {
 
-      const serviceName = payload.data.values.service.name;
+      const serviceName = cloudEvent.data.values.service.name;
       try {
-        const repo = await gh.getRepo(gitHubOrgName, payload.data.project);
+        const repo = await gh.getRepo(gitHubOrgName, cloudEvent.data.project);
   
         const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
         const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
@@ -213,7 +212,7 @@ export class GitHubService {
             console.log(`[keptn] Service already available in stage: ${stage.name}.`);
           } else {
             console.log(`[keptn] Adding artifacts to: ${stage.name}.`);
-            await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName, payload );
+            await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName, cloudEvent );
           }
         }));
   
@@ -222,24 +221,24 @@ export class GitHubService {
         console.log(e.message);
       }
     } else {
-      console.log('[keptn] Payload does not contain data.values.');
+      console.log('[keptn] CloudEvent does not contain data.values.');
     }
   }
 
-  private async addArtifactsToBranch(gitHubOrgName: string, repo: any, serviceName: string, stage: Stage, valuesObj: any, chartName: string, payload: OnboardServiceModel) {
-    if (payload.data.values) {
+  private async addArtifactsToBranch(gitHubOrgName: string, repo: any, serviceName: string, stage: Stage, valuesObj: any, chartName: string, cloudEvent: OnboardServiceModel) {
+    if (cloudEvent.data.values) {
       // update values file
-      valuesObj[serviceName] = payload.data.values;
+      valuesObj[serviceName] = cloudEvent.data.values;
       await repo.writeFile(stage.name, 'helm-chart/values.yml', YAML.stringify(valuesObj, 100), `[keptn]: Added entry for ${serviceName} in values.yml`, { encode: true });
   
       // add deployment and service template
-      await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, payload);
+      await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, cloudEvent);
   
       if (stage.deployment_strategy === 'blue_green_service') {
         const blueGreenValues = {};
   
         // update values file
-        blueGreenValues[`${serviceName}Blue`] = payload.data.values;
+        blueGreenValues[`${serviceName}Blue`] = cloudEvent.data.values;
         blueGreenValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
         blueGreenValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
   
@@ -280,36 +279,36 @@ export class GitHubService {
           }
         }
       }
-    } /*else if (payload.data.manifest) {
-      await repo.writeFile(stage.name, `${serviceName}.yml`, YAML.stringify(payload.data.manifest, 100), `[keptn]: Added manifest for ${serviceName}`, { encode: true });
+    } /*else if (cloudEvent.data.manifest) {
+      await repo.writeFile(stage.name, `${serviceName}.yml`, YAML.stringify(cloudEvent.data.manifest, 100), `[keptn]: Added manifest for ${serviceName}`, { encode: true });
     }*/ else {
       console.log('[keptn] For onboarding a service, a values or manifest object must be available in the data block.');
     }
   }
 
-  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, payload: OnboardServiceModel) {
+  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, cloudEvent: OnboardServiceModel) {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
-    if(payload.data.templates.deployment) {
+    if(cloudEvent.data.templates.deployment) {
       // TODO: Read deployment from data.templates block.
-      console.log("Reading deployment template from payload not impleted.");
+      console.log("Reading deployment template from cloudEvent not impleted.");
     } else { // Use Template
       let deploymentTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/deployment.tpl');
       deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
       deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
-      // TODO: let deploymentTpl = payload.data.templates.deployment
+      // TODO: let deploymentTpl = cloudEvent.data.templates.deployment
       await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yml`, deploymentTpl, `[keptn]: Added deployment yml template for app: ${serviceName}.`, { encode: true });
     }
 
-    if(payload.data.templates.service) {
+    if(cloudEvent.data.templates.service) {
       // TODO: Read deployment from data.templates block.
-      console.log("Reading service template from payload not impleted.");
+      console.log("Reading service template from cloudEvent not impleted.");
     } else { // Use Template
       let serviceTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/service.tpl');
       serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
       serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
-      // TODO: let serviceTpl = payload.data.templates.service
+      // TODO: let serviceTpl = cloudEvent.data.templates.service
       await repo.writeFile(branch, `helm-chart/templates/${serviceName}-service.yml`, serviceTpl, `[keptn]: Added service yml template for app: ${serviceName}.`, { encode: true }); 
     }
   }
