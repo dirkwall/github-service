@@ -281,9 +281,9 @@ export class GitHubService {
           }
         }
       }
-    } else if (payload.data.manifest) {
+    } /*else if (payload.data.manifest) {
       await repo.writeFile(stage.name, `${serviceName}.yml`, YAML.stringify(payload.data.manifest, 100), `[keptn]: Added manifest for ${serviceName}`, { encode: true });
-    } else {
+    }*/ else {
       console.log('[keptn] For onboarding a service, a values or manifest object must be available in the data block.');
     }
   }
