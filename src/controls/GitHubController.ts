@@ -54,9 +54,8 @@ export class GitHubController implements interfaces.Controller {
   
     console.log(request.body);
     console.log(request.body.eventType);
-    console.log(request.body.data.eventType);
 
-    if (request.body.eventType === 'project') {
+    if (request.body.eventType == 'project') {
   
       console.log("DEBUG: start project creation.")
 
@@ -64,7 +63,7 @@ export class GitHubController implements interfaces.Controller {
       const gitHub : GitHubService = await GitHubService.getInstance();
       await gitHub.createProject(GitHubService.gitHubOrg , payload);
   
-    } else if (request.body.eventType === 'service') {
+    } else if (request.body.eventType == 'service') {
   
       const payload : OnboardServiceModel = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();

@@ -228,57 +228,63 @@ export class GitHubService {
   }
 
   private async addArtifactsToBranch(gitHubOrgName: string, repo: any, serviceName: string, stage: Stage, valuesObj: any, chartName: string, payload: OnboardServiceModel) {
-    // update values file
-    valuesObj[serviceName] = payload.data.values;
-    await repo.writeFile(stage.name, 'helm-chart/values.yml', YAML.stringify(valuesObj, 100), `[keptn]: Added entry for new app in values.yml`, { encode: true });
-
-    // add deployment and service template
-    await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, payload);
-
-    if (stage.deployment_strategy === 'blue_green_service') {
-      const blueGreenValues = {};
-
+    if (payload.data.values) {
       // update values file
-      blueGreenValues[`${serviceName}Blue`] = payload.data.values;
-      blueGreenValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
-      blueGreenValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
-
-      if (blueGreenValues[`${serviceName}Blue`].service) {
-          blueGreenValues[`${serviceName}Blue`].service.name = blueGreenValues[`${serviceName}Blue`].service.name + '-blue';
-      }
-      if (blueGreenValues[`${serviceName}Green`].service) {
-          blueGreenValues[`${serviceName}Green`].service.name = blueGreenValues[`${serviceName}Green`].service.name + '-green';
-      }
-      await repo.writeFile(stage.name, `helm-chart/values.yml`, YAML.stringify(blueGreenValues, 100), `[keptn]: Added blue/green values`, {encode: true});
-    
-      // get templates for the service
-      const branch = await repo.getBranch(stage.name);
-      const gitHubRootTree: GitHubTreeModel = (await repo.getTree(branch.data.commit.sha)).data;
-
-      // get the content of helm-chart/templates
-      const gitHubHelmTree : GitHubTreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
-      let gitHubTemplateTree : GitHubTreeModel = (await repo.getTree(gitHubHelmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
-
-      // create blue/green yamls for each deployment/service
-      for (let j = 0; j < gitHubTemplateTree.tree.length; j++) {
-
-        const template : TreeItem = gitHubTemplateTree.tree[j];
-
-        if (template => template.path.indexOf(serviceName) === 0 &&
-           (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
-           (template.path.indexOf('Blue') < 0) && (template.path.indexOf('Green') < 0)) {
-
-          const decamelizedserviceName = decamelize(serviceName, '-');
-          const templateContentB64Enc = await repo.getContents(stage.name, `helm-chart/templates/${template.path}`);
-          const templateContent = base64decode(templateContentB64Enc.data.content);
-
-          if (template.path.indexOf('-service.yml') > 0) {
-            await this.createIstioEntry(gitHubOrgName, repo, decamelizedserviceName, serviceName, stage.name, chartName);
-          } else {
-            await this.createBlueGreenDeployment(repo, serviceName, decamelizedserviceName, stage.name, templateContent, template);
+      valuesObj[serviceName] = payload.data.values;
+      await repo.writeFile(stage.name, 'helm-chart/values.yml', YAML.stringify(valuesObj, 100), `[keptn]: Added entry for ${serviceName} in values.yml`, { encode: true });
+  
+      // add deployment and service template
+      await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, payload);
+  
+      if (stage.deployment_strategy === 'blue_green_service') {
+        const blueGreenValues = {};
+  
+        // update values file
+        blueGreenValues[`${serviceName}Blue`] = payload.data.values;
+        blueGreenValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
+        blueGreenValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
+  
+        if (blueGreenValues[`${serviceName}Blue`].service) {
+            blueGreenValues[`${serviceName}Blue`].service.name = blueGreenValues[`${serviceName}Blue`].service.name + '-blue';
+        }
+        if (blueGreenValues[`${serviceName}Green`].service) {
+            blueGreenValues[`${serviceName}Green`].service.name = blueGreenValues[`${serviceName}Green`].service.name + '-green';
+        }
+        await repo.writeFile(stage.name, `helm-chart/values.yml`, YAML.stringify(blueGreenValues, 100), `[keptn]: Added blue/green values`, {encode: true});
+      
+        // get templates for the service
+        const branch = await repo.getBranch(stage.name);
+        const gitHubRootTree: GitHubTreeModel = (await repo.getTree(branch.data.commit.sha)).data;
+  
+        // get the content of helm-chart/templates
+        const gitHubHelmTree : GitHubTreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
+        let gitHubTemplateTree : GitHubTreeModel = (await repo.getTree(gitHubHelmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
+  
+        // create blue/green yamls for each deployment/service
+        for (let j = 0; j < gitHubTemplateTree.tree.length; j++) {
+  
+          const template : TreeItem = gitHubTemplateTree.tree[j];
+  
+          if (template => template.path.indexOf(serviceName) === 0 &&
+             (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
+             (template.path.indexOf('Blue') < 0) && (template.path.indexOf('Green') < 0)) {
+  
+            const decamelizedserviceName = decamelize(serviceName, '-');
+            const templateContentB64Enc = await repo.getContents(stage.name, `helm-chart/templates/${template.path}`);
+            const templateContent = base64decode(templateContentB64Enc.data.content);
+  
+            if (template.path.indexOf('-service.yml') > 0) {
+              await this.createIstioEntry(gitHubOrgName, repo, decamelizedserviceName, serviceName, stage.name, chartName);
+            } else {
+              await this.createBlueGreenDeployment(repo, serviceName, decamelizedserviceName, stage.name, templateContent, template);
+            }
           }
         }
       }
+    } else if (payload.data.manifest) {
+      await repo.writeFile(stage.name, `${serviceName}.yml`, YAML.stringify(payload.data.manifest, 100), `[keptn]: Added manifest for ${serviceName}`, { encode: true });
+    } else {
+      console.log('[keptn] For onboarding a service, a values or manifest object must be available in the data block.');
     }
   }
 
@@ -286,17 +292,27 @@ export class GitHubService {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
-    let deploymentTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/deployment.tpl');
-    deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
-    deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
-    // TODO: let deploymentTpl = payload.data.templates.deployment
-    await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yml`, deploymentTpl, `[keptn]: Added deployment yml template for app: ${serviceName}.`, { encode: true });
+    if(payload.data.templates.deployment) {
+      // TODO: Read deployment from data.templates block.
+      console.log("Reading deployment template from payload not impleted.");
+    } else { // Use Template
+      let deploymentTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/deployment.tpl');
+      deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
+      deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
+      // TODO: let deploymentTpl = payload.data.templates.deployment
+      await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yml`, deploymentTpl, `[keptn]: Added deployment yml template for app: ${serviceName}.`, { encode: true });
+    }
 
-    let serviceTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/service.tpl');
-    serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
-    serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
-    // TODO: let serviceTpl = payload.data.templates.service
-    await repo.writeFile(branch, `helm-chart/templates/${serviceName}-service.yml`, serviceTpl, `[keptn]: Added service yml template for app: ${serviceName}.`, { encode: true }); 
+    if(payload.data.templates.service) {
+      // TODO: Read deployment from data.templates block.
+      console.log("Reading service template from payload not impleted.");
+    } else { // Use Template
+      let serviceTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/service.tpl');
+      serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
+      serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
+      // TODO: let serviceTpl = payload.data.templates.service
+      await repo.writeFile(branch, `helm-chart/templates/${serviceName}-service.yml`, serviceTpl, `[keptn]: Added service yml template for app: ${serviceName}.`, { encode: true }); 
+    }
   }
 
   async createIstioEntry(gitHubOrgName: string, repo: any, decamelizedServiceKey : string, serviceName : string, branch: string, chartName: string) {
