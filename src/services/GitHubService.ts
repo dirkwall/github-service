@@ -90,8 +90,8 @@ export class GitHubService {
     try {
       const org = await gh.getOrganization(orgName);
       console.log(org.__name);
-      await org.createRepo(repository);
-      console.log('DEBUG: created repo.');
+      const result = await org.createRepo(repository);
+      console.log(result.statusText);
     } catch (e) {
       if (e.response) {
         if (e.response.statusText === 'Not Found') {
