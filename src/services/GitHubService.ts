@@ -89,15 +89,18 @@ export class GitHubService {
 
     try {
       const org = await gh.getOrganization(orgName);
+      console.log('DEBUG: get org.');
       await org.createRepo(repository);
+      console.log('DEBUG: created repo.');
     } catch (e) {
-      if (e.response.statusText === 'Not Found') {
-        console.log(`[keptn] Could not find organziation ${orgName}.`);
-        console.log(e.message);
-      } else if (e.response.statusText === 'Unprocessable Entity') {
-        console.log(`[keptn] Repository ${shipyard.project} already available.`);
-        console.log(e.message);
+      if (e.response) {
+        if (e.response.statusText === 'Not Found') {
+          console.log(`[keptn] Could not find organziation ${orgName}.`);
+        } else if (e.response.statusText === 'Unprocessable Entity') {
+          console.log(`[keptn] Repository ${shipyard.project} already available.`);
+        }
       }
+      console.log(e.message);
       return false;
     }
     return true;
