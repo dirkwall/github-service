@@ -1,5 +1,5 @@
-import { GitHubCredentials } from '../types/GitHubCredentials';
-import { KeptnGitHubCredSecret } from '../types/KeptnGitHubCredSecret';
+import { CredentialsModel } from '../types/CredentialsModel';
+import { CredentialsSecret } from '../types/CredentialsSecret';
 import { KeptnConfigSecretFactory } from '../lib/KeptnConfigSecretFactory';
 import { K8sClientFactory } from '../lib/K8sClientFactory';
 
@@ -23,20 +23,20 @@ export class CredentialsService {
     return CredentialsService.instance;
   }
 
-  async updateGithubConfig(gitCreds: GitHubCredentials) : Promise<boolean> {
+  async updateGithubConfig(gitCreds: CredentialsModel) : Promise<boolean> {
     let updated: boolean = false;
-    if(gitCreds != undefined && gitCreds.areCredentialsDefined()) {
+    if (gitCreds !== undefined && gitCreds.areCredentialsDefined()) {
       const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(gitCreds);
-      const updatedSecret : KeptnGitHubCredSecret = await this.updateGithubCredentials(secret);
-      if (updatedSecret != undefined){
+      const updatedSecret : CredentialsSecret = await this.updateGithubCredentials(secret);
+      if (updatedSecret !== undefined) {
         updated = true;
       }
     }
     return updated;
   }
 
-  async getGithubCredentials(): Promise<GitHubCredentials> {
-    const gitHubCredentials: GitHubCredentials = new GitHubCredentials();
+  async getGithubCredentials(): Promise<CredentialsModel> {
+    const gitHubCredentials: CredentialsModel = new CredentialsModel();
 
     const secret = await this.k8sClient.api.v1
       .namespaces('keptn').secrets
@@ -56,16 +56,16 @@ export class CredentialsService {
     return gitHubCredentials;
   }
 
-  private async updateGithubCredentials(secret: KeptnGitHubCredSecret) : Promise<KeptnGitHubCredSecret> {
-    let createdSecret: KeptnGitHubCredSecret = undefined;
-    if(secret != undefined) {
+  private async updateGithubCredentials(secret: CredentialsSecret) : Promise<CredentialsSecret> {
+    let createdSecret: CredentialsSecret = undefined;
+    if (secret !== undefined) {
       try {
         const deleteResult = await this.k8sClient.api.v1
           .namespaces('keptn').secrets('github-credentials').delete();
       } catch (e) {
         console.log('Can not delete credentials');
       }
-  
+
       createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secrets.post({
         body: secret,
       });

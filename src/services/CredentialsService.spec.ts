@@ -5,7 +5,7 @@ import 'mocha';
 import * as sinon from 'sinon';
 import { cleanUpMetadata } from 'inversify-express-utils';
 import { CredentialsService } from './CredentialsService';
-import { GitHubCredentials } from '../types/GitHubCredentials';
+import { GitHubCredentials } from '../types/CredentialsModel';
 
 describe('CredentialsService', () => {
   let credService: CredentialsService;

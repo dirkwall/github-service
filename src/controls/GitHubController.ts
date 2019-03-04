@@ -17,6 +17,7 @@ import {
 } from 'swagger-express-ts';
 
 import { GitHubService } from '../services/GitHubService';
+import { CredentialsService } from '../services/CredentialsService';
 
 import { CloudEvent } from 'cloudevent';
 
@@ -60,17 +61,24 @@ export class GitHubController implements interfaces.Controller {
       console.log('DEBUG: start project creation.');
 
       const cloudEvent : CloudEvent = request.body;
-      const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.createProject(GitHubService.gitHubOrg , cloudEvent.data);
+      const gitHubSvc : GitHubService = await GitHubService.getInstance();
+      await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
 
     } else if (request.body.eventType == 'service') {
 
-      console.log('DEBUG: start service creation.')
+      console.log('DEBUG: start service creation.');
 
       const cloudEvent : CloudEvent = request.body;
-      const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
+      const gitHubSvc : GitHubService = await GitHubService.getInstance();
+      await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
+    } else if (request.body.eventType == 'config') {
+
+      console.log('DEBUG: create secret');
+
+      const cloudEvent : CloudEvent = request.body;
+      const credSvc: CredentialsService = CredentialsService.getInstance();
+      //await credSvc.updateGithubConfig(cloudEvent.data);
     }
 
     const result = {

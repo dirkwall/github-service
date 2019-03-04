@@ -2,8 +2,8 @@ import { CredentialsService } from './CredentialsService';
 
 import { ServiceModel } from '../controls/ServiceModel';
 import { Stage, ShipyardModel } from '../controls/ShipyardModel';
-import { GitHubCredentials } from '../types/GitHubCredentials';
-import { GitHubTreeModel , TreeItem } from '../types/GitHubTreeModel';
+import { CredentialsModel } from '../types/CredentialsModel';
+import { TreeModel , TreeItem } from '../types/TreeModel';
 
 import { Utils } from '../lib/Utils';
 import { base64decode } from 'nodejs-base64';
@@ -41,7 +41,7 @@ export class GitHubService {
 
       // initialize github api with user and token
       const credService: CredentialsService = CredentialsService.getInstance();
-      const githubCreds: GitHubCredentials = await credService.getGithubCredentials();
+      const githubCreds: CredentialsModel = await credService.getGithubCredentials();
       GitHubService.gitHubOrg = githubCreds.org;
 
       gh = new GitHub({
@@ -260,11 +260,11 @@ export class GitHubService {
 
         // get templates for the service
         const branch = await repo.getBranch(stage.name);
-        const gitHubRootTree: GitHubTreeModel = (await repo.getTree(branch.data.commit.sha)).data;
+        const gitHubRootTree: TreeModel = (await repo.getTree(branch.data.commit.sha)).data;
 
         // get the content of helm-chart/templates
-        const helmTree : GitHubTreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
-        let templateTree : GitHubTreeModel = (await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
+        const helmTree : TreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
+        let templateTree : TreeModel = (await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
 
         // create blue/green yamls for each deployment/service
         for (let j = 0; j < templateTree.tree.length; j++) {
