@@ -56,7 +56,7 @@ export class GitHubController implements interfaces.Controller {
     console.log(request.body);
     console.log(request.body.eventType);
 
-    if (request.body.eventType == 'project') {
+    if (request.body.eventType == 'create.project') {
 
       console.log('DEBUG: start project creation.');
 
@@ -64,7 +64,7 @@ export class GitHubController implements interfaces.Controller {
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
 
-    } else if (request.body.eventType == 'service') {
+    } else if (request.body.eventType == 'onboard.service') {
 
       console.log('DEBUG: start service creation.');
 
@@ -72,9 +72,9 @@ export class GitHubController implements interfaces.Controller {
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
-    } else if (request.body.eventType == 'config') {
+    } else if (request.body.eventType == 'configure') {
 
-      console.log('DEBUG: create secret');
+      console.log('DEBUG: create secret.');
 
       const cloudEvent : CloudEvent = request.body;
       const credSvc: CredentialsService = CredentialsService.getInstance();

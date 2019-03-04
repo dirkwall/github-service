@@ -119,7 +119,7 @@ export class GitHubService {
       });
       console.log(`WebHook created: http://${eventBrokerUri}/github`);
     } catch (e) {
-      console.log('[keptn] Setting hook failed.');
+      console.log('[keptn] Setting webhook failed.');
       console.log(e.message);
     }
   }
