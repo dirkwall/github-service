@@ -1,7 +1,7 @@
 import { CredentialsService } from './CredentialsService';
 
-import { ServiceModel } from '../controls/ServiceModel';
-import { Stage, ShipyardModel } from '../controls/ShipyardModel';
+import { ServiceModel } from '../types/ServiceModel';
+import { Stage, ShipyardModel } from '../types/ShipyardModel';
 import { CredentialsModel } from '../types/CredentialsModel';
 import { TreeModel , TreeItem } from '../types/TreeModel';
 

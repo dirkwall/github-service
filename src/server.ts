@@ -13,8 +13,8 @@ import * as swagger from 'swagger-express-ts';
 import './controls/GitHubController';
 
 // import models
-import './controls/ShipyardModel';
-import './controls/ServiceModel';
+import './types/ShipyardModel';
+import './types/ServiceModel';
 
 // import RequestLogger = require('./middleware/requestLogger');
 import * as path from 'path';
