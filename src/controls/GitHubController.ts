@@ -66,17 +66,17 @@ export class GitHubController implements interfaces.Controller {
     } else if (request.body.eventType == 'service') {
 
       console.log('DEBUG: start service creation.')
-  
+
       const cloudEvent : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
       await gitHub.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
     }
-  
+
     const result = {
       result: 'success',
     };
-  
+
     response.send(result);
   }
 

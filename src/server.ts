@@ -13,10 +13,10 @@ import * as swagger from 'swagger-express-ts';
 import './controls/GitHubController';
 
 // import models
-import './controls/CreateProjectModel';
+import './controls/ShipyardModel';
 import './controls/ServiceModel';
 
-//import RequestLogger = require('./middleware/requestLogger');
+// import RequestLogger = require('./middleware/requestLogger');
 import * as path from 'path';
 
 const port: number = Number(process.env.PORT) || 5001; // or from a configuration file
@@ -37,7 +37,7 @@ server.setConfig((app: any) => {
           ),
     );
   app.use(bodyParser.json());
-  //app.use(RequestLogger);
+  // app.use(RequestLogger);
   app.use(
     swagger.express({
       definition: {
