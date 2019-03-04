@@ -206,7 +206,7 @@ export class GitHubService {
         await Promise.all(shipyardlObj.stages.map(async (stage) => {
           const valuesYaml = await repo.getContents(stage.name, 'helm-chart/values.yml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
-          if (valuesObj === undefined) { valuesObj = {}; }
+          if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
           const chartYaml = await repo.getContents(stage.name, 'helm-chart/Chart.yml');
           const chartObj = YAML.parse(base64decode(chartYaml.data.content));
@@ -233,7 +233,7 @@ export class GitHubService {
   private async addArtifactsToBranch(repo: any, orgName: string, service : ServiceModel, stage: Stage, valuesObj: any, chartName: string) {
     if (service.values) {
       // update values file
-      const serviceName = service.values.name;
+      const serviceName = service.values.service.name;
       valuesObj[serviceName] = service.values;
       await repo.writeFile(stage.name, 'helm-chart/values.yml', YAML.stringify(valuesObj, 100),
                            `[keptn]: Added entry for ${serviceName} in values.yml`,
@@ -274,11 +274,11 @@ export class GitHubService {
           if (template => template.path.indexOf(serviceName) === 0 &&
              (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
              (template.path.indexOf('Blue') < 0) && (template.path.indexOf('Green') < 0)) {
-  
+
             const decamelizedserviceName = decamelize(serviceName, '-');
             const templateContentB64Enc = await repo.getContents(stage.name, `helm-chart/templates/${template.path}`);
             const templateContent = base64decode(templateContentB64Enc.data.content);
-  
+
             if (template.path.indexOf('-service.yml') > 0) {
               await this.createIstioEntry(orgName, repo, decamelizedserviceName, serviceName, stage.name, chartName);
             } else {

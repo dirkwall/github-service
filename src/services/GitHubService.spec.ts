@@ -38,8 +38,8 @@ describe('GitHubService', () => {
       },
     }
 
-    const payload : CloudEvent = request.body;
-    const created = await gitHubSvc.createProject(GitHubService.gitHubOrg , payload);
+    const cloudEvent : CloudEvent = request.body;
+    const created = await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent);
     expect(created).to.be.true;
   }).timeout(10000);
 
