@@ -1,5 +1,6 @@
 FROM node:10-alpine
 ENV NODE_ENV "production"
+ENV NODE_TLS_REJECT_UNAUTHORIZED '0'
 ENV PORT 8080
 EXPOSE 8080
 RUN addgroup mygroup && adduser -D -G mygroup myuser && mkdir -p /usr/src/app && chown -R myuser /usr/src/app
