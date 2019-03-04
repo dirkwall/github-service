@@ -89,8 +89,7 @@ export class GitHubService {
 
     try {
       const org = await gh.getOrganization(orgName);
-      console.log(orgName+' '+shipyard);
-      await org.createRepo(repository);
+      //await org.createRepo(repository);
       console.log('DEBUG: created repo.');
     } catch (e) {
       if (e.response) {
@@ -100,6 +99,7 @@ export class GitHubService {
           console.log(`[keptn] Repository ${shipyard.project} already available.`);
         }
       }
+      console.log("Error");
       console.log(e.message);
       return false;
     }
