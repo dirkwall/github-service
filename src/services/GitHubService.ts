@@ -1,8 +1,7 @@
 import { CredentialsService } from './CredentialsService';
 
-import { CreateProjectModel } from '../controls/CreateProjectModel';
-import { OnboardServiceModel } from '../controls/OnboardServiceModel';
-import { Stage } from '../types/ShipyardModel';
+import { ServiceModel } from '../controls/ServiceModel';
+import { Stage, ShipyardModel } from '../controls/ShipyardModel';
 import { GitHubCredentials } from '../types/GitHubCredentials';
 import { GitHubTreeModel , TreeItem } from '../types/GitHubTreeModel';
 
@@ -27,6 +26,12 @@ export class GitHubService {
 
   public static gitHubOrg: string;
 
+  private static gatewayTplFile: string = 'keptn/github-operator/templates/istio-manifests/gateway.tpl';
+  private static destinationRuleTplFile: string = 'keptn/github-operator/templates/istio-manifests/destination_rule.tpl';
+  private static virtualServiceTplFile: string = 'keptn/github-operator/templates/istio-manifests/virtual_service.tpl';
+  private static deploymentTplFile: string = 'keptn/github-operator/templates/service-template/deployment.tpl';
+  private static serviceTplFile: string = 'keptn/github-operator/templates/service-template/service.tpl';
+
   private constructor() {
   }
 
@@ -48,28 +53,28 @@ export class GitHubService {
     return GitHubService.instance;
   }
 
-  async createProject(gitHubOrgName : string, cloudEvent : CreateProjectModel) : Promise<boolean> {
-    const created: boolean = await this.createRepository(gitHubOrgName, cloudEvent);
+  async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
+    const created: boolean = await this.createRepository(orgName, shipyard);
     if (created) {
-      const repo = await gh.getRepo(gitHubOrgName, cloudEvent.data.project);
+      const repo = await gh.getRepo(orgName, shipyard.project);
 
-      await this.initialCommit(repo, cloudEvent);
-      await this.createBranchesForEachStages(repo, cloudEvent);
-      await this.addShipyardToMaster(repo, cloudEvent);
-      await this.setHook(repo, cloudEvent);
+      await this.initialCommit(repo, shipyard);
+      await this.createBranchesForEachStages(repo, shipyard);
+      await this.addShipyardToMaster(repo, shipyard);
+      await this.setHook(repo, shipyard);
     }
     return created;
   }
 
-  async deleteProject(gitHubOrgName : string, cloudEvent : CreateProjectModel) : Promise<boolean> {
+  async deleteProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
     let deleted = false;
     try {
-      const repo = await gh.getRepo(cloudEvent.data.project);
+      const repo = await gh.getRepo(shipyard.project);
       deleted = await repo.deleteRepo();
     } catch (e) {
-      if (e.response.statusText != undefined) {
+      if (e.response.statusText !== undefined) {
         if (e.response.statusText === 'Not Found') {
-          console.log(`[keptn] Could not find repository ${cloudEvent.data.project}.`);
+          console.log(`[keptn] Could not find repository ${shipyard.project}.`);
           console.log(e.message);
         }
       }
@@ -77,20 +82,20 @@ export class GitHubService {
     return deleted;
   }
 
-  private async createRepository(gitHubOrgName : string, cloudEvent : CreateProjectModel) : Promise<boolean> {
+  private async createRepository(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
     const repository = {
-      name : cloudEvent.data.project,
+      name : shipyard.project,
     };
 
     try {
-      const org = await gh.getOrganization(gitHubOrgName);
+      const org = await gh.getOrganization(orgName);
       await org.createRepo(repository);
     } catch (e) {
       if (e.response.statusText === 'Not Found') {
-        console.log(`[keptn] Could not find organziation ${gitHubOrgName}.`);
+        console.log(`[keptn] Could not find organziation ${orgName}.`);
         console.log(e.message);
       } else if (e.response.statusText === 'Unprocessable Entity') {
-        console.log(`[keptn] Repository ${cloudEvent.data.project} already available.`);
+        console.log(`[keptn] Repository ${shipyard.project} already available.`);
         console.log(e.message);
       }
       return false;
@@ -98,7 +103,7 @@ export class GitHubService {
     return true;
   }
 
-  private async setHook(repo : any, cloudEvent : CreateProjectModel) : Promise<any> {
+  private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
     try {
       //TODO: const istioIngressGatewayService = await utils.getK8sServiceUrl('istio-ingressgateway', 'istio-system');
       //TODO: const eventBrokerUri = `event-broker.keptn.${istioIngressGatewayService.ip}.xip.io`;
@@ -119,11 +124,11 @@ export class GitHubService {
     }
   }
 
-  private async initialCommit(repo : any, cloudEvent : CreateProjectModel) : Promise<any> {
+  private async initialCommit(repo : any, shipyard : ShipyardModel) : Promise<any> {
     try {
       await repo.writeFile('master',
                            'README.md',
-                           `# keptn takes care of your ${cloudEvent.data.project}`,
+                           `# keptn takes care of your ${shipyard.project}`,
                            '[keptn]: Initial commit', { encode: true });
     } catch (e) {
       console.log('[keptn] Initial commit failed.');
@@ -131,16 +136,16 @@ export class GitHubService {
     }
   }
 
-  private async createBranchesForEachStages(repo : any, cloudEvent : CreateProjectModel) : Promise<any> {
+  private async createBranchesForEachStages(repo : any, shipyard : ShipyardModel) : Promise<any> {
     try {
       const chart = {
         apiVersion: 'v1',
         description: 'A Helm chart for Kubernetes',
         name: 'mean-k8s',
-        version: '0.1.0'
+        version: '0.1.0',
       };
 
-      cloudEvent.data.stages.forEach(async stage => {
+      shipyard.stages.forEach(async stage => {
         await repo.createBranch('master', stage.name );
 
         await repo.writeFile(stage.name,
@@ -157,8 +162,8 @@ export class GitHubService {
 
         if (stage.deployment_strategy === 'blue_green_service') {
           // add istio gateway to stage
-          let gatewaySpec = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/gateway.tpl');
-          gatewaySpec = Mustache.render(gatewaySpec, { application: cloudEvent.data.project, stage: stage.name });
+          let gatewaySpec = await utils.readFileContent(GitHubService.gatewayTplFile);
+          gatewaySpec = Mustache.render(gatewaySpec, { application: shipyard.project, stage: stage.name });
 
           await repo.writeFile(stage.name,
                                'helm-chart/templates/istio-gateway.yml',
@@ -173,11 +178,11 @@ export class GitHubService {
     }
   }
 
-  private async addShipyardToMaster(repo: any, cloudEvent : CreateProjectModel) : Promise<any> {
+  private async addShipyardToMaster(repo: any, shipyard : ShipyardModel) : Promise<any> {
     try {
       await repo.writeFile('master',
                            'shipyard.yml',
-                           YAML.stringify(cloudEvent.data),
+                           YAML.stringify(shipyard),
                            '[keptn]: Added shipyard containing the definition of each stage.',
                            { encode: true });
     } catch (e) {
@@ -186,36 +191,36 @@ export class GitHubService {
     }
   }
 
-  async onboardService(gitHubOrgName : string, cloudEvent : OnboardServiceModel) : Promise<any> {
-    
-    if ( cloudEvent.data.values && cloudEvent.data.values.service ) {
+  async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
 
-      const serviceName = cloudEvent.data.values.service.name;
+    if (service.values && service.values.service) {
+
+      const serviceName = service.values.service.name;
       try {
-        const repo = await gh.getRepo(gitHubOrgName, cloudEvent.data.project);
-  
+        const repo = await gh.getRepo(orgName, service.project);
+
         const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
         const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
-  
-        //shipyardlObj.stages.forEach(async stage => {     
+
+        //shipyardlObj.stages.forEach(async stage => {
         await Promise.all(shipyardlObj.stages.map(async (stage) => {
           const valuesYaml = await repo.getContents(stage.name, 'helm-chart/values.yml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
-          if (valuesObj == undefined) { valuesObj = {}; }
-  
+          if (valuesObj === undefined) { valuesObj = {}; }
+
           const chartYaml = await repo.getContents(stage.name, 'helm-chart/Chart.yml');
           const chartObj = YAML.parse(base64decode(chartYaml.data.content));
           const chartName = chartObj.name;
-  
+
           // service already defined in helm chart
           if (valuesObj[serviceName] !== undefined) {
             console.log(`[keptn] Service already available in stage: ${stage.name}.`);
           } else {
             console.log(`[keptn] Adding artifacts to: ${stage.name}.`);
-            await this.addArtifactsToBranch(gitHubOrgName, repo, serviceName, stage, valuesObj, chartName, cloudEvent );
+            await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
           }
         }));
-  
+
       } catch (e) {
         console.log('[keptn] Onboarding service failed.');
         console.log(e.message);
@@ -225,44 +230,47 @@ export class GitHubService {
     }
   }
 
-  private async addArtifactsToBranch(gitHubOrgName: string, repo: any, serviceName: string, stage: Stage, valuesObj: any, chartName: string, cloudEvent: OnboardServiceModel) {
-    if (cloudEvent.data.values) {
+  private async addArtifactsToBranch(repo: any, orgName: string, service : ServiceModel, stage: Stage, valuesObj: any, chartName: string) {
+    if (service.values) {
       // update values file
-      valuesObj[serviceName] = cloudEvent.data.values;
-      await repo.writeFile(stage.name, 'helm-chart/values.yml', YAML.stringify(valuesObj, 100), `[keptn]: Added entry for ${serviceName} in values.yml`, { encode: true });
-  
+      const serviceName = service.values.name;
+      valuesObj[serviceName] = service.values;
+      await repo.writeFile(stage.name, 'helm-chart/values.yml', YAML.stringify(valuesObj, 100),
+                           `[keptn]: Added entry for ${serviceName} in values.yml`,
+                           { encode: true });
+
       // add deployment and service template
-      await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, cloudEvent);
-  
+      await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, service);
+
       if (stage.deployment_strategy === 'blue_green_service') {
-        const blueGreenValues = {};
-  
+        const bgValues = {};
+
         // update values file
-        blueGreenValues[`${serviceName}Blue`] = cloudEvent.data.values;
-        blueGreenValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
-        blueGreenValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
-  
-        if (blueGreenValues[`${serviceName}Blue`].service) {
-            blueGreenValues[`${serviceName}Blue`].service.name = blueGreenValues[`${serviceName}Blue`].service.name + '-blue';
+        bgValues[`${serviceName}Blue`] = service.values;
+        bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
+        bgValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
+
+        if (bgValues[`${serviceName}Blue`].service) {
+            bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
         }
-        if (blueGreenValues[`${serviceName}Green`].service) {
-            blueGreenValues[`${serviceName}Green`].service.name = blueGreenValues[`${serviceName}Green`].service.name + '-green';
+        if (bgValues[`${serviceName}Green`].service) {
+            bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
         }
-        await repo.writeFile(stage.name, `helm-chart/values.yml`, YAML.stringify(blueGreenValues, 100), `[keptn]: Added blue/green values`, {encode: true});
-      
+        await repo.writeFile(stage.name, `helm-chart/values.yml`, YAML.stringify(bgValues, 100), `[keptn]: Added blue/green values`, {encode: true});
+
         // get templates for the service
         const branch = await repo.getBranch(stage.name);
         const gitHubRootTree: GitHubTreeModel = (await repo.getTree(branch.data.commit.sha)).data;
-  
+
         // get the content of helm-chart/templates
-        const gitHubHelmTree : GitHubTreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
-        let gitHubTemplateTree : GitHubTreeModel = (await repo.getTree(gitHubHelmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
-  
+        const helmTree : GitHubTreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
+        let templateTree : GitHubTreeModel = (await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
+
         // create blue/green yamls for each deployment/service
-        for (let j = 0; j < gitHubTemplateTree.tree.length; j++) {
-  
-          const template : TreeItem = gitHubTemplateTree.tree[j];
-  
+        for (let j = 0; j < templateTree.tree.length; j++) {
+
+          const template : TreeItem = templateTree.tree[j];
+
           if (template => template.path.indexOf(serviceName) === 0 &&
              (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
              (template.path.indexOf('Blue') < 0) && (template.path.indexOf('Green') < 0)) {
@@ -272,7 +280,7 @@ export class GitHubService {
             const templateContent = base64decode(templateContentB64Enc.data.content);
   
             if (template.path.indexOf('-service.yml') > 0) {
-              await this.createIstioEntry(gitHubOrgName, repo, decamelizedserviceName, serviceName, stage.name, chartName);
+              await this.createIstioEntry(orgName, repo, decamelizedserviceName, serviceName, stage.name, chartName);
             } else {
               await this.createBlueGreenDeployment(repo, serviceName, decamelizedserviceName, stage.name, templateContent, template);
             }
@@ -286,26 +294,26 @@ export class GitHubService {
     }
   }
 
-  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, cloudEvent: OnboardServiceModel) {
+  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, service : ServiceModel) {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
-    if(cloudEvent.data.templates.deployment) {
+    if(service.templates.deployment) {
       // TODO: Read deployment from data.templates block.
-      console.log("Reading deployment template from cloudEvent not impleted.");
+      console.log('Reading deployment template from cloudEvent not impleted.');
     } else { // Use Template
-      let deploymentTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/deployment.tpl');
+      let deploymentTpl = await utils.readFileContent(GitHubService.deploymentTplFile);
       deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
       deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
       // TODO: let deploymentTpl = cloudEvent.data.templates.deployment
       await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yml`, deploymentTpl, `[keptn]: Added deployment yml template for app: ${serviceName}.`, { encode: true });
     }
 
-    if(cloudEvent.data.templates.service) {
+    if(service.templates.service) {
       // TODO: Read deployment from data.templates block.
-      console.log("Reading service template from cloudEvent not impleted.");
+      console.log('Reading service template from cloudEvent not impleted.');
     } else { // Use Template
-      let serviceTpl = await utils.readFileContent('keptn/github-operator/templates/service-template/service.tpl');
+      let serviceTpl = await utils.readFileContent(GitHubService.serviceTplFile);
       serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
       serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
       // TODO: let serviceTpl = cloudEvent.data.templates.service
@@ -313,21 +321,21 @@ export class GitHubService {
     }
   }
 
-  async createIstioEntry(gitHubOrgName: string, repo: any, decamelizedServiceKey : string, serviceName : string, branch: string, chartName: string) {
+  async createIstioEntry(orgName: string, repo: any, serviceKey : string, serviceName : string, branch: string, chartName: string) {
     // create destination rule
-    let destinationRuleTpl = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/destination_rule.tpl');
+    let destinationRuleTpl = await utils.readFileContent(GitHubService.destinationRuleTplFile);
     destinationRuleTpl = Mustache.render(destinationRuleTpl, {
-      serviceName: decamelizedServiceKey,
+      serviceName: serviceKey,
       chartName,
       environment: branch,
     });
     await repo.writeFile(branch, `helm-chart/templates/istio-destination-rule-${serviceName}.yml`, destinationRuleTpl, `[keptn]: Added istio destination rule for ${serviceName}.`, { encode: true });
 
     // create istio virtual service
-    let virtualServiceTpl = await utils.readFileContent('keptn/github-operator/templates/istio-manifests/virtual_service.tpl');
+    let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFile);
     virtualServiceTpl = Mustache.render(virtualServiceTpl, {
-      gitHubOrg: gitHubOrgName,
-      serviceName: decamelizedServiceKey,
+      gitHubOrg: orgName,
+      serviceName: serviceKey,
       chartName,
       environment: branch,
       // TODO: ingressGatewayIP: istioIngressGatewayService.ip
@@ -336,28 +344,28 @@ export class GitHubService {
   }
 
   async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
-    
-    let replaceRegex = new RegExp(serviceName, 'g');
-    let tmpRegex = new RegExp('selector-' + decamelizedServiceName, 'g');
-    let decamelizedServiceNameRegex = new RegExp(decamelizedServiceName, 'g');
-    let tmpString : string = uuid();
+
+    const replaceRegex = new RegExp(serviceName, 'g');
+    const tmpRegex = new RegExp('selector-' + decamelizedServiceName, 'g');
+    const decamelizedServiceNameRegex = new RegExp(decamelizedServiceName, 'g');
+    const tmpString : string = uuid();
 
     let templateContentBlue = templateContent.replace(replaceRegex, `${serviceName}Blue`);
     templateContentBlue = templateContentBlue.replace(tmpRegex, tmpString);
     templateContentBlue = templateContentBlue.replace(decamelizedServiceNameRegex, `${decamelizedServiceName}-blue`);
     templateContentBlue = templateContentBlue.replace(new RegExp(tmpString, 'g'), 'selector-' + decamelizedServiceName);
-    
+
     let templateContentGreen = templateContent.replace(replaceRegex, `${serviceName}Green`);
     templateContentGreen = templateContentGreen.replace(tmpRegex, tmpString);
     templateContentGreen = templateContentGreen.replace(decamelizedServiceNameRegex, `${decamelizedServiceName}-green`);
     templateContentGreen = templateContentGreen.replace(new RegExp(tmpString, 'g'), 'selector-' + decamelizedServiceName);
-    
+
     let templateBluePathName = template.path.replace(replaceRegex, `${serviceName}Blue`);
     let templateGreenPathName = template.path.replace(replaceRegex, `${serviceName}Green`);
 
     await repo.writeFile(branch, `helm-chart/templates/${templateBluePathName}`, templateContentBlue, `[keptn]: Added blue version of ${serviceName}`, { encode: true });
     await repo.writeFile(branch, `helm-chart/templates/${templateGreenPathName}`, templateContentGreen, `[keptn]: Added green version of ${serviceName}`, { encode: true });
-    
+
     // delete the original template
     await repo.deleteFile(branch, `helm-chart/templates/${template.path}`);
   }

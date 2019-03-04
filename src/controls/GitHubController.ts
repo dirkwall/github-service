@@ -16,8 +16,6 @@ import {
   SwaggerDefinitionConstant,
 } from 'swagger-express-ts';
 
-import { CreateProjectModel } from './CreateProjectModel';
-import { OnboardServiceModel } from './OnboardServiceModel';
 import { GitHubService } from '../services/GitHubService';
 
 import { CloudEvent } from 'cloudevent';
@@ -53,25 +51,25 @@ export class GitHubController implements interfaces.Controller {
     response: express.Response,
     next: express.NextFunction,
   ): Promise<void> {
-  
+
     console.log(request.body);
     console.log(request.body.eventType);
 
     if (request.body.eventType == 'project') {
-  
-      console.log("DEBUG: start project creation.")
+
+      console.log('DEBUG: start project creation.');
 
       const cloudEvent : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.createProject(GitHubService.gitHubOrg , cloudEvent);
-  
+      await gitHub.createProject(GitHubService.gitHubOrg , cloudEvent.data);
+
     } else if (request.body.eventType == 'service') {
 
-      console.log("DEBUG: start service creation.")
+      console.log('DEBUG: start service creation.')
   
       const cloudEvent : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.onboardService(GitHubService.gitHubOrg, cloudEvent);
+      await gitHub.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
     }
   
@@ -101,9 +99,9 @@ export class GitHubController implements interfaces.Controller {
  
     if (request.body.eventType === 'project') {
   
-      const payload : CreateProjectModel = request.body;
+      const cloudEvent : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
-      await gitHub.deleteProject(GitHubService.gitHubOrg , payload);
+      await gitHub.deleteProject(GitHubService.gitHubOrg , cloudEvent);
   
     } 
   

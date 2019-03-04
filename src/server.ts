@@ -14,7 +14,7 @@ import './controls/GitHubController';
 
 // import models
 import './controls/CreateProjectModel';
-import './controls/OnboardServiceModel';
+import './controls/ServiceModel';
 
 //import RequestLogger = require('./middleware/requestLogger');
 import * as path from 'path';
