@@ -26,11 +26,11 @@ export class GitHubService {
 
   public static gitHubOrg: string;
 
-  private static gatewayTplFile: string = 'keptn/github-operator/templates/istio-manifests/gateway.tpl';
-  private static destinationRuleTplFile: string = 'keptn/github-operator/templates/istio-manifests/destination_rule.tpl';
-  private static virtualServiceTplFile: string = 'keptn/github-operator/templates/istio-manifests/virtual_service.tpl';
-  private static deploymentTplFile: string = 'keptn/github-operator/templates/service-template/deployment.tpl';
-  private static serviceTplFile: string = 'keptn/github-operator/templates/service-template/service.tpl';
+  private static gatewayTplFile: string = 'templates/istio-manifests/gateway.tpl';
+  private static destinationRuleTplFile: string = 'templates/istio-manifests/destination_rule.tpl';
+  private static virtualServiceTplFile: string = 'templates/istio-manifests/virtual_service.tpl';
+  private static deploymentTplFile: string = 'templates/service-template/deployment.tpl';
+  private static serviceTplFile: string = 'templates/service-template/service.tpl';
 
   private constructor() {
   }
@@ -89,7 +89,6 @@ export class GitHubService {
 
     try {
       const org = await gh.getOrganization(orgName);
-      console.log(org.__name);
       const result = await org.createRepo(repository);
       console.log(result.statusText);
     } catch (e) {
@@ -100,8 +99,7 @@ export class GitHubService {
           console.log(`[keptn] Repository ${shipyard.project} already available.`);
         }
       }
-      console.log("Error");
-      console.log(e.message);
+      console.log(`Error: ${e.message}`);
       return false;
     }
     return true;
