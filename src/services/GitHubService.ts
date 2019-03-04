@@ -89,7 +89,7 @@ export class GitHubService {
 
     try {
       const org = await gh.getOrganization(orgName);
-      console.log('DEBUG: get org.');
+      console.log(orgName+' '+shipyard);
       await org.createRepo(repository);
       console.log('DEBUG: created repo.');
     } catch (e) {
