@@ -53,9 +53,11 @@ export class GitHubController implements interfaces.Controller {
     next: express.NextFunction,
   ): Promise<void> {
 
+    console.log(request.body);
+
     if (request.body.eventType == 'create.project') {
 
-      console.log('DEBUG: start project creation.');
+      console.log('[git-service]: start project creation.');
 
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
@@ -63,7 +65,7 @@ export class GitHubController implements interfaces.Controller {
 
     } else if (request.body.eventType == 'onboard.service') {
 
-      console.log('DEBUG: start service creation.');
+      console.log('[git-service]: start service creation.');
 
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
@@ -71,11 +73,22 @@ export class GitHubController implements interfaces.Controller {
 
     } else if (request.body.eventType == 'configure') {
 
-      console.log('DEBUG: create secret.');
+      console.log('[git-service]: start secret creation.');
 
       const cloudEvent : CloudEvent = request.body;
       const credSvc: CredentialsService = CredentialsService.getInstance();
       //await credSvc.updateGithubConfig(cloudEvent.data);
+
+    } else if (request.body.eventType == 'update.configuration') {
+
+      console.log('[git-service]: update configuraiton.');
+
+      const cloudEvent : CloudEvent = request.body;
+      const gitHubSvc : GitHubService = await GitHubService.getInstance();
+      await gitHubSvc.updateConfiguration(GitHubService.gitHubOrg, cloudEvent.data);
+
+    } else {
+      console.log('[git-service]: Event type unknown.');
     }
 
     const result = {

@@ -3,6 +3,7 @@ import { CredentialsService } from './CredentialsService';
 import { ServiceModel } from '../types/ServiceModel';
 import { Stage, ShipyardModel } from '../types/ShipyardModel';
 import { CredentialsModel } from '../types/CredentialsModel';
+import { ConfigurationModel } from '../types/ConfigurationModel';
 import { TreeModel , TreeItem } from '../types/TreeModel';
 
 import { Utils } from '../lib/Utils';
@@ -51,6 +52,38 @@ export class GitHubService {
       });
     }
     return GitHubService.instance;
+  }
+
+  async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
+    let updated = false;
+    try {
+      const repo = await gh.getRepo(orgName, config.project);
+      const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yml');
+      let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
+      if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
+
+      // service not availalbe in values file
+      if (valuesObj[config.service] === undefined) {
+        console.log(`[keptn] Service not available.`);
+      } else {
+        valuesObj[config.service].image.repository = config.image;
+        valuesObj[config.service].image.tag = 'stable';
+
+        const result = await repo.writeFile(config.stage, 'helm-chart/values.yml',
+                                            YAML.stringify(valuesObj, 100),
+                                            `[keptn-config-change]:${config.service}:${config.image}`,
+                                            { encode: true });
+        if (result.statusText === 'OK') {
+          updated = true;
+        }
+      }
+    } catch (e) {
+      if (e.response && e.response.statusText === 'Not Found') {
+        console.log(`[keptn] Could not find values file.`);
+        console.log(e.message);
+      }
+    }
+    return updated;
   }
 
   async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
