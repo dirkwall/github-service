@@ -26,7 +26,7 @@ export class GitHubService {
 
   public static gitHubOrg: string;
 
-  private static gatewayTplFile: string = 'templates/istio-manifests/gateway.tpl';
+  private static gatewayTplFile: string = 'keptn/github-operator/templates/istio-manifests/gateway.tpl';
   private static destinationRuleTplFile: string = 'keptn/github-operator/templates/istio-manifests/destination_rule.tpl';
   private static virtualServiceTplFile: string = 'keptn/github-operator/templates/istio-manifests/virtual_service.tpl';
   private static deploymentTplFile: string = 'keptn/github-operator/templates/service-template/deployment.tpl';
@@ -72,11 +72,9 @@ export class GitHubService {
       const repo = await gh.getRepo(shipyard.project);
       deleted = await repo.deleteRepo();
     } catch (e) {
-      if (e.response.statusText !== undefined) {
-        if (e.response.statusText === 'Not Found') {
-          console.log(`[keptn] Could not find repository ${shipyard.project}.`);
-          console.log(e.message);
-        }
+      if (e.response && e.response.statusText === 'Not Found') {
+        console.log(`[keptn] Could not find repository ${shipyard.project}.`);
+        console.log(e.message);
       }
     }
     return deleted;
@@ -204,7 +202,7 @@ export class GitHubService {
         const shipyardYaml = await repo.getContents('master', 'shipyard.yml');
         const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
-        //shipyardlObj.stages.forEach(async stage => {
+        // shipyardlObj.stages.forEach(async stage => {
         await Promise.all(shipyardlObj.stages.map(async (stage) => {
           const valuesYaml = await repo.getContents(stage.name, 'helm-chart/values.yml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
@@ -300,7 +298,7 @@ export class GitHubService {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
-    if(service.templates.deployment) {
+    if (service.templates && service.templates.deployment) {
       // TODO: Read deployment from data.templates block.
       console.log('Reading deployment template from cloudEvent not impleted.');
     } else { // Use Template
@@ -311,7 +309,7 @@ export class GitHubService {
       await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yml`, deploymentTpl, `[keptn]: Added deployment yml template for app: ${serviceName}.`, { encode: true });
     }
 
-    if(service.templates.service) {
+    if (service.templates && service.templates.service) {
       // TODO: Read deployment from data.templates block.
       console.log('Reading service template from cloudEvent not impleted.');
     } else { // Use Template
@@ -346,27 +344,26 @@ export class GitHubService {
   }
 
   async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
-
     const replaceRegex = new RegExp(serviceName, 'g');
-    const tmpRegex = new RegExp('selector-' + decamelizedServiceName, 'g');
-    const decamelizedServiceNameRegex = new RegExp(decamelizedServiceName, 'g');
+    const tmpRegex = new RegExp(`selector-${decamelizedServiceName}`, 'g');
+    const serviceNameRegex = new RegExp(decamelizedServiceName, 'g');
     const tmpString : string = uuid();
 
-    let templateContentBlue = templateContent.replace(replaceRegex, `${serviceName}Blue`);
-    templateContentBlue = templateContentBlue.replace(tmpRegex, tmpString);
-    templateContentBlue = templateContentBlue.replace(decamelizedServiceNameRegex, `${decamelizedServiceName}-blue`);
-    templateContentBlue = templateContentBlue.replace(new RegExp(tmpString, 'g'), 'selector-' + decamelizedServiceName);
+    let templateBlue = templateContent.replace(replaceRegex, `${serviceName}Blue`);
+    templateBlue = templateBlue.replace(tmpRegex, tmpString);
+    templateBlue = templateBlue.replace(serviceNameRegex, `${decamelizedServiceName}-blue`);
+    templateBlue = templateBlue.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
 
-    let templateContentGreen = templateContent.replace(replaceRegex, `${serviceName}Green`);
-    templateContentGreen = templateContentGreen.replace(tmpRegex, tmpString);
-    templateContentGreen = templateContentGreen.replace(decamelizedServiceNameRegex, `${decamelizedServiceName}-green`);
-    templateContentGreen = templateContentGreen.replace(new RegExp(tmpString, 'g'), 'selector-' + decamelizedServiceName);
+    let templateGreen = templateContent.replace(replaceRegex, `${serviceName}Green`);
+    templateGreen = templateGreen.replace(tmpRegex, tmpString);
+    templateGreen = templateGreen.replace(serviceNameRegex, `${decamelizedServiceName}-green`);
+    templateGreen = templateGreen.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
 
-    let templateBluePathName = template.path.replace(replaceRegex, `${serviceName}Blue`);
-    let templateGreenPathName = template.path.replace(replaceRegex, `${serviceName}Green`);
+    const templateBluePathName = template.path.replace(replaceRegex, `${serviceName}Blue`);
+    const templateGreenPathName = template.path.replace(replaceRegex, `${serviceName}Green`);
 
-    await repo.writeFile(branch, `helm-chart/templates/${templateBluePathName}`, templateContentBlue, `[keptn]: Added blue version of ${serviceName}`, { encode: true });
-    await repo.writeFile(branch, `helm-chart/templates/${templateGreenPathName}`, templateContentGreen, `[keptn]: Added green version of ${serviceName}`, { encode: true });
+    await repo.writeFile(branch, `helm-chart/templates/${templateBluePathName}`, templateBlue, `[keptn]: Added blue version of ${serviceName}`, { encode: true });
+    await repo.writeFile(branch, `helm-chart/templates/${templateGreenPathName}`, templateGreen, `[keptn]: Added green version of ${serviceName}`, { encode: true });
 
     // delete the original template
     await repo.deleteFile(branch, `helm-chart/templates/${template.path}`);
