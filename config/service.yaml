@@ -28,7 +28,7 @@ spec:
       revisionTemplate:
         spec:
           container:
-            image: REGISTRY_URI_PLACEHOLDER:5000/keptn/github-service:latest
+            image: 10.7.254.124:5000/keptn/github-service:latest
             env: 
 ---
 
