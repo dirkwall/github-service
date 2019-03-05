@@ -1,7 +1,7 @@
 {
-  "name": "sh.keptn.github-operator",
+  "name": "sh.keptn.github-service",
   "version": "0.1.0",
-  "description": "GitHub Operator",
+  "description": "GitHub Service",
   "main": "dist/server.js",
   "scripts": {
     "build-ts": "tsc",
@@ -15,14 +15,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/keptn/github-operator.git"
+    "url": "git+https://github.com/keptn/github-service.git"
   },
   "author": "Johannes Bräuer",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/keptn/github-operator/issues"
+    "url": "https://github.com/keptn/github-service/issues"
   },
-  "homepage": "https://github.com/keptn/github-operator#readme",
+  "homepage": "https://github.com/keptn/github-service#readme",
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.6",

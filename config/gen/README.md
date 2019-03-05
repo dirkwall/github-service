@@ -3,4 +3,4 @@
 The directory `/config/gen/` contains auto-generated files that are added to the `.gitignore`:
 
 * deploy script:
-    * config/gen/operator.yaml
+    * config/gen/service.yaml
