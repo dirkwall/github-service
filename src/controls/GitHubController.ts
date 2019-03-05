@@ -1,88 +1,120 @@
-import express = require('express');
-import { CreateProjectModel } from './CreateProjectModel';
-import { OnboardServiceModel } from './OnboardServiceModel';
+import 'reflect-metadata';
+import * as express from 'express';
+import { inject, injectable } from 'inversify';
+import {
+  controller,
+  httpGet,
+  httpPost,
+  httpDelete,
+  interfaces,
+} from 'inversify-express-utils';
+import {
+  ApiOperationGet,
+  ApiOperationPost,
+  ApiOperationDelete,
+  ApiPath,
+  SwaggerDefinitionConstant,
+} from 'swagger-express-ts';
+
 import { GitHubService } from '../services/GitHubService';
+import { CredentialsService } from '../services/CredentialsService';
 
-const router = express.Router();
+import { CloudEvent } from 'cloudevent';
 
-router.post('/', async (request: express.Request, response: express.Response) => {
+@ApiPath({
+  name: 'GitHub',
+  path: '/',
+  security: { apiKeyHeader: [] },
+})
+@controller('/')
+export class GitHubController implements interfaces.Controller {
 
-  console.log('DEBUG: in POST / from github-operator');
-  console.log(request.body);
+  constructor() { }
 
-  if (request.body.eventtype === 'webhook') {
+  @ApiOperationPost({
+    description: 'Handle channel events',
+    parameters: {
+      body: {
+        description: 'Handle channel events',
+        model: '',
+        required: true,
+      },
+    },
+    responses: {
+      200: {
+      },
+    },
+    summary: 'Handle channel events',
+  })
+  @httpPost('/')
+  public async handleEvent(
+    request: express.Request,
+    response: express.Response,
+    next: express.NextFunction,
+  ): Promise<void> {
 
-    // logic to handle a push or pull request event
+    if (request.body.eventType == 'create.project') {
 
-  } else if (request.body.eventtype === 'project') {
+      console.log('DEBUG: start project creation.');
 
-/*
-{
-	"eventtype" : "project",
-	"data" : {
-      "project": "sockshop98",
-      "stages": [
-        {
-            "name": "dev",
-            "deployment_strategy": "direct"
-        },
-        {
-            "name": "staging",
-            "deployment_strategy": "blue_green_service"
-        },
-        {
-            "name": "production",
-            "deployment_strategy": "blue_green_service"
-        }
-	    ]
-   }
-}
-*/
+      const cloudEvent : CloudEvent = request.body;
+      const gitHubSvc : GitHubService = await GitHubService.getInstance();
+      await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
 
-    const payload : CreateProjectModel = request.body;
-    const gitHub : GitHubService = await GitHubService.getInstance();
-    await gitHub.createProject('keptn-test' , payload);
+    } else if (request.body.eventType == 'onboard.service') {
 
-  } else if (request.body.eventtype === 'service') {
+      console.log('DEBUG: start service creation.');
 
-/*
-{
-	"eventtype" : "service",
-	"data" : {
-      "project" : "sockshop99",
-      "file" : ""
-   }
-}
-*/
-    const payload : OnboardServiceModel = request.body;
-    const gitHub : GitHubService = await GitHubService.getInstance();
-    await gitHub.onboardService('keptn-test', payload);
+      const cloudEvent : CloudEvent = request.body;
+      const gitHubSvc : GitHubService = await GitHubService.getInstance();
+      await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
+    } else if (request.body.eventType == 'configure') {
+
+      console.log('DEBUG: create secret.');
+
+      const cloudEvent : CloudEvent = request.body;
+      const credSvc: CredentialsService = CredentialsService.getInstance();
+      //await credSvc.updateGithubConfig(cloudEvent.data);
+    }
+
+    const result = {
+      result: 'success',
+    };
+
+    response.send(result);
   }
 
-  const result = {
-    result: 'success',
-  };
+  @ApiOperationDelete({
+    description: 'Delete elements',
+    parameters: {
+    },
+    responses: {
+      200: {
+      },
+    },
+    summary: 'Delete elements',
+  })
+  @httpDelete('/')
+  public async deleteElement(
+    request: express.Request,
+    response: express.Response,
+    next: express.NextFunction,
+  ): Promise<void> {
+ 
+    if (request.body.eventType === 'project') {
+  
+      const cloudEvent : CloudEvent = request.body;
+      const gitHub : GitHubService = await GitHubService.getInstance();
+      await gitHub.deleteProject(GitHubService.gitHubOrg , cloudEvent);
+  
+    } 
+  
+    const result = {
+      result: 'success',
+    };
+  
+    response.send(result);
+  }
 
-  response.send(result);
-});
-
-router.get('/', (request: express.Request, response: express.Response) => {
-
-  const result = {
-    result: 'success',
-  };
-
-  response.send(result);
-});
-
-router.delete('/', async (request: express.Request, response: express.Response) => {
-
-  const result = {
-    result: 'success',
-  };
-
-  response.send(result);
-});
-
-export = router;
+}

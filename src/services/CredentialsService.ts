@@ -1,11 +1,11 @@
-import { GitHubCredentials } from '../types/GitHubCredentials';
-import { KeptnGitHubCredSecret } from '../types/KeptnGitHubCredSecret';
+import { CredentialsModel } from '../types/CredentialsModel';
+import { CredentialsSecret } from '../types/CredentialsSecret';
 import { KeptnConfigSecretFactory } from '../lib/KeptnConfigSecretFactory';
 import { K8sClientFactory } from '../lib/K8sClientFactory';
 
 import * as K8sApi from 'kubernetes-client';
 
-import { base64encode, base64decode } from 'nodejs-base64';
+import { base64decode } from 'nodejs-base64';
 
 export class CredentialsService {
 
@@ -23,19 +23,20 @@ export class CredentialsService {
     return CredentialsService.instance;
   }
 
-  async updateGithubConfig(keptnConfig: GitHubCredentials) {
-    const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(keptnConfig);
-
-    const created = await this.updateGithubCredentials(secret);
-    console.log(created);
+  async updateGithubConfig(gitCreds: CredentialsModel) : Promise<boolean> {
+    let updated: boolean = false;
+    if (gitCreds !== undefined && gitCreds.areCredentialsDefined()) {
+      const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(gitCreds);
+      const updatedSecret : CredentialsSecret = await this.updateGithubCredentials(secret);
+      if (updatedSecret !== undefined) {
+        updated = true;
+      }
+    }
+    return updated;
   }
 
-  async getGithubCredentials(): Promise<GitHubCredentials> {
-    const gitHubCredentials: GitHubCredentials = {
-      org: '',
-      user: '',
-      token: '',
-    };
+  async getGithubCredentials(): Promise<CredentialsModel> {
+    const gitHubCredentials: CredentialsModel = new CredentialsModel();
 
     const secret = await this.k8sClient.api.v1
       .namespaces('keptn').secrets
@@ -55,19 +56,20 @@ export class CredentialsService {
     return gitHubCredentials;
   }
 
-  private async updateGithubCredentials(secret: KeptnGitHubCredSecret) {
-    try {
-      const deleteResult = await this.k8sClient.api.v1
-        .namespaces('keptn').secrets('github-credentials').delete();
-      console.log(deleteResult);
-    } catch (e) {
-      console.log('Can not delete credentials');
+  private async updateGithubCredentials(secret: CredentialsSecret) : Promise<CredentialsSecret> {
+    let createdSecret: CredentialsSecret = undefined;
+    if (secret !== undefined) {
+      try {
+        const deleteResult = await this.k8sClient.api.v1
+          .namespaces('keptn').secrets('github-credentials').delete();
+      } catch (e) {
+        console.log('Can not delete credentials');
+      }
+
+      createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secrets.post({
+        body: secret,
+      });
     }
-
-    const created = await this.k8sClient.api.v1.namespaces('keptn').secrets.post({
-      body: secret,
-    });
-
-    return created;
+    return createdSecret;
   }
 }

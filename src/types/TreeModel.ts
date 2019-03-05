@@ -1,4 +1,4 @@
-export interface GitHubTreeModel {
+export interface TreeModel {
   sha: string;
   url: string;
   tree: TreeItem[];

@@ -1,11 +1,11 @@
-import { GitHubCredentials } from './GitHubCredentials';
+import { CredentialsModel } from './CredentialsModel';
 
-export interface KeptnGitHubCredSecret {
+export interface CredentialsSecret {
   apiVersion: string;
   kind: string;
   metadata: Metadata;
   type: string;
-  data: GitHubCredentials;
+  data: CredentialsModel;
 }
 
 interface Metadata {
