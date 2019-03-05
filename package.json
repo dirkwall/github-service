@@ -4,10 +4,11 @@
   "description": "GitHub Service",
   "main": "dist/server.js",
   "scripts": {
-    "build-ts": "tsc",
+    "build-ts": "tsc && npm run html",
     "start": "npm run serve",
     "serve": "node dist/server.js",
     "watch-node": "nodemon dist/server.js",
+    "html": "copyfiles src/**/*.html src/**/*.css dist/",
     "watch-ts": "tsc -w",
     "dev": "nodemon",
     "test": "echo \"Testing...\" && nyc --reporter=text nyc mocha && nyc report",

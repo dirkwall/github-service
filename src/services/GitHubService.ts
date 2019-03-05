@@ -69,10 +69,11 @@ export class GitHubService {
         valuesObj[config.service].image.repository = config.image;
         valuesObj[config.service].image.tag = 'stable';
 
-        const result = await repo.writeFile(config.stage, 'helm-chart/values.yml',
-                                            YAML.stringify(valuesObj, 100),
-                                            `[keptn-config-change]:${config.service}:${config.image}`,
-                                            { encode: true });
+        const result = await repo.writeFile(
+          config.stage, 'helm-chart/values.yml',
+          YAML.stringify(valuesObj, 100),
+          `[keptn-config-change]:${config.service}:${config.image}`,
+          { encode: true });
         if (result.statusText === 'OK') {
           updated = true;
         }
@@ -159,10 +160,11 @@ export class GitHubService {
 
   private async initialCommit(repo : any, shipyard : ShipyardModel) : Promise<any> {
     try {
-      await repo.writeFile('master',
-                           'README.md',
-                           `# keptn takes care of your ${shipyard.project}`,
-                           '[keptn]: Initial commit', { encode: true });
+      await repo.writeFile(
+        'master',
+        'README.md',
+        `# keptn takes care of your ${shipyard.project}`,
+        '[keptn]: Initial commit', { encode: true });
     } catch (e) {
       console.log('[keptn] Initial commit failed.');
       console.log(e.message);
@@ -181,28 +183,33 @@ export class GitHubService {
       shipyard.stages.forEach(async stage => {
         await repo.createBranch('master', stage.name );
 
-        await repo.writeFile(stage.name,
-                             'helm-chart/Chart.yml',
-                             YAML.stringify(chart),
-                             '[keptn]: Added helm-chart Chart.yml file.',
-                             { encode: true });
+        await repo.writeFile(
+          stage.name,
+          'helm-chart/Chart.yml',
+          YAML.stringify(chart),
+          '[keptn]: Added helm-chart Chart.yml file.',
+          { encode: true });
 
-        await repo.writeFile(stage.name,
-                             'helm-chart/values.yml',
-                             '',
-                             '[keptn]: Added helm-chart values.yml file.',
-                             { encode: true });
+        await repo.writeFile(
+          stage.name,
+          'helm-chart/values.yml',
+          '',
+          '[keptn]: Added helm-chart values.yml file.',
+          { encode: true });
 
         if (stage.deployment_strategy === 'blue_green_service') {
           // add istio gateway to stage
           let gatewaySpec = await utils.readFileContent(GitHubService.gatewayTplFile);
-          gatewaySpec = Mustache.render(gatewaySpec, { application: shipyard.project, stage: stage.name });
+          gatewaySpec = Mustache.render(
+            gatewaySpec,
+            { application: shipyard.project, stage: stage.name });
 
-          await repo.writeFile(stage.name,
-                               'helm-chart/templates/istio-gateway.yml',
-                               gatewaySpec,
-                               '[keptn]: Added istio gateway.',
-                               { encode: true });
+          await repo.writeFile(
+            stage.name,
+            'helm-chart/templates/istio-gateway.yml',
+            gatewaySpec,
+            '[keptn]: Added istio gateway.',
+            { encode: true });
         }
       });
     } catch (e) {
@@ -213,11 +220,13 @@ export class GitHubService {
 
   private async addShipyardToMaster(repo: any, shipyard : ShipyardModel) : Promise<any> {
     try {
-      await repo.writeFile('master',
-                           'shipyard.yml',
-                           YAML.stringify(shipyard),
-                           '[keptn]: Added shipyard containing the definition of each stage.',
-                           { encode: true });
+      await repo.writeFile(
+        'master',
+        'shipyard.yml',
+        YAML.stringify(shipyard),
+        '[keptn]: Added shipyard containing the definition of each stage.',
+        { encode: true });
+
     } catch (e) {
       console.log('[keptn] Adding shipyard to master failed.');
       console.log(e.message);
@@ -289,15 +298,24 @@ export class GitHubService {
         if (bgValues[`${serviceName}Green`].service) {
             bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
         }
-        await repo.writeFile(stage.name, `helm-chart/values.yml`, YAML.stringify(bgValues, 100), `[keptn]: Added blue/green values`, {encode: true});
+        await repo.writeFile(
+          stage.name,
+          `helm-chart/values.yml`,
+          YAML.stringify(bgValues, 100),
+          `[keptn]: Added blue/green values`,
+          { encode: true });
 
         // get templates for the service
         const branch = await repo.getBranch(stage.name);
         const gitHubRootTree: TreeModel = (await repo.getTree(branch.data.commit.sha)).data;
 
         // get the content of helm-chart/templates
-        const helmTree : TreeModel = (await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)).data;
-        let templateTree : TreeModel = (await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)).data;
+        const helmTree : TreeModel = (
+          await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)
+          ).data;
+        const templateTree : TreeModel = (
+          await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)
+          ).data;
 
         // create blue/green yamls for each deployment/service
         for (let j = 0; j < templateTree.tree.length; j++) {
@@ -309,13 +327,27 @@ export class GitHubService {
              (template.path.indexOf('Blue') < 0) && (template.path.indexOf('Green') < 0)) {
 
             const decamelizedserviceName = decamelize(serviceName, '-');
-            const templateContentB64Enc = await repo.getContents(stage.name, `helm-chart/templates/${template.path}`);
+            const templateContentB64Enc = await repo.getContents(
+              stage.name,
+              `helm-chart/templates/${template.path}`);
             const templateContent = base64decode(templateContentB64Enc.data.content);
 
             if (template.path.indexOf('-service.yml') > 0) {
-              await this.createIstioEntry(orgName, repo, decamelizedserviceName, serviceName, stage.name, chartName);
+              await this.createIstioEntry(
+                orgName,
+                repo,
+                decamelizedserviceName,
+                serviceName,
+                stage.name,
+                chartName);
             } else {
-              await this.createBlueGreenDeployment(repo, serviceName, decamelizedserviceName, stage.name, templateContent, template);
+              await this.createBlueGreenDeployment(
+                repo,
+                serviceName,
+                decamelizedserviceName,
+                stage.name,
+                templateContent,
+                template);
             }
           }
         }
@@ -339,7 +371,12 @@ export class GitHubService {
       deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
       deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
       // TODO: let deploymentTpl = cloudEvent.data.templates.deployment
-      await repo.writeFile(branch, `helm-chart/templates/${serviceName}-deployment.yml`, deploymentTpl, `[keptn]: Added deployment yml template for app: ${serviceName}.`, { encode: true });
+      await repo.writeFile(
+        branch,
+        `helm-chart/templates/${serviceName}-deployment.yml`,
+        deploymentTpl,
+        `[keptn]: Added deployment yml template for app: ${serviceName}.`,
+        { encode: true });
     }
 
     if (service.templates && service.templates.service) {
@@ -350,7 +387,12 @@ export class GitHubService {
       serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
       serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
       // TODO: let serviceTpl = cloudEvent.data.templates.service
-      await repo.writeFile(branch, `helm-chart/templates/${serviceName}-service.yml`, serviceTpl, `[keptn]: Added service yml template for app: ${serviceName}.`, { encode: true }); 
+      await repo.writeFile(
+        branch,
+        `helm-chart/templates/${serviceName}-service.yml`,
+        serviceTpl,
+        `[keptn]: Added service yml template for app: ${serviceName}.`,
+        { encode: true } );
     }
   }
 
@@ -362,7 +404,12 @@ export class GitHubService {
       chartName,
       environment: branch,
     });
-    await repo.writeFile(branch, `helm-chart/templates/istio-destination-rule-${serviceName}.yml`, destinationRuleTpl, `[keptn]: Added istio destination rule for ${serviceName}.`, { encode: true });
+    await repo.writeFile(
+      branch,
+      `helm-chart/templates/istio-destination-rule-${serviceName}.yml`,
+      destinationRuleTpl,
+      `[keptn]: Added istio destination rule for ${serviceName}.`,
+      { encode: true });
 
     // create istio virtual service
     let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFile);
@@ -373,7 +420,12 @@ export class GitHubService {
       environment: branch,
       // TODO: ingressGatewayIP: istioIngressGatewayService.ip
     });
-    await repo.writeFile(branch, `helm-chart/templates/istio-virtual-service-${serviceName}.yml`, virtualServiceTpl, `[keptn]: Added istio virtual service for ${serviceName}.`, { encode: true });
+    await repo.writeFile(
+      branch,
+      `helm-chart/templates/istio-virtual-service-${serviceName}.yml`,
+      virtualServiceTpl,
+      `[keptn]: Added istio virtual service for ${serviceName}.`,
+      { encode: true });
   }
 
   async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
@@ -395,8 +447,19 @@ export class GitHubService {
     const templateBluePathName = template.path.replace(replaceRegex, `${serviceName}Blue`);
     const templateGreenPathName = template.path.replace(replaceRegex, `${serviceName}Green`);
 
-    await repo.writeFile(branch, `helm-chart/templates/${templateBluePathName}`, templateBlue, `[keptn]: Added blue version of ${serviceName}`, { encode: true });
-    await repo.writeFile(branch, `helm-chart/templates/${templateGreenPathName}`, templateGreen, `[keptn]: Added green version of ${serviceName}`, { encode: true });
+    await repo.writeFile(
+      branch,
+      `helm-chart/templates/${templateBluePathName}`,
+      templateBlue,
+      `[keptn]: Added blue version of ${serviceName}`,
+      { encode: true });
+      
+    await repo.writeFile(
+      branch,
+      `helm-chart/templates/${templateGreenPathName}`,
+      templateGreen,
+      `[keptn]: Added green version of ${serviceName}`,
+      { encode: true });
 
     // delete the original template
     await repo.deleteFile(branch, `helm-chart/templates/${template.path}`);
