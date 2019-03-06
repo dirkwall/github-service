@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: SERVICE_PLACEHOLDER_DEC
+  name: {{ .Chart.Name }}-SERVICE_PLACEHOLDER_DEC
   labels:
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
 spec:

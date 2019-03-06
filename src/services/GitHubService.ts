@@ -160,10 +160,9 @@ export class GitHubService {
 
   private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
     try {
-      const istioIngressGatewayService =
-        await utils.getK8sServiceUrl('istio-ingressgateway', 'istio-system');
-      const eventBrokerUri =
-        `event-broker-ext.keptn.` +
+      const istioIngressGatewayService = await utils.getK8sServiceUrl(
+        'istio-ingressgateway', 'istio-system');
+      const eventBrokerUri = `event-broker-ext.keptn.` +
         `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
 
       console.log(eventBrokerUri);
@@ -317,6 +316,9 @@ export class GitHubService {
       // add deployment and service template
       await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, service);
 
+      const istioIngressGatewayService = await utils.getK8sServiceUrl(
+        'istio-ingressgateway', 'istio-system');
+
       if (stage.deployment_strategy === 'blue_green_service') {
         const bgValues = valuesObj;
 
@@ -374,6 +376,7 @@ export class GitHubService {
                 serviceName,
                 stage.name,
                 chartName,
+                istioIngressGatewayService,
               );
             } else if (template.path.indexOf('-deployment.yaml') > 0) {
               await this.createBlueGreenDeployment(
@@ -432,7 +435,7 @@ export class GitHubService {
     }
   }
 
-  async createIstioEntry(orgName: string, repo: any, serviceKey : string, serviceName : string, branch: string, chartName: string) {
+  async createIstioEntry(orgName: string, repo: any, serviceKey : string, serviceName : string, branch: string, chartName: string, istioIngressGatewayService: any) {
     // create destination rule
     let destinationRuleTpl = await utils.readFileContent(GitHubService.destinationRuleTplFile);
     destinationRuleTpl = Mustache.render(destinationRuleTpl, {
@@ -454,7 +457,7 @@ export class GitHubService {
       serviceName: serviceKey,
       chartName,
       environment: branch,
-      // TODO: ingressGatewayIP: istioIngressGatewayService.ip
+      ingressGatewayIP: istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip,
     });
     await repo.writeFile(
       branch,
@@ -465,6 +468,7 @@ export class GitHubService {
   }
 
   async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
+  /*
     const replaceRegex = new RegExp(serviceName, 'g');
     const tmpRegex = new RegExp(`selector-${decamelizedServiceName}`, 'g');
     const serviceNameRegex = new RegExp(decamelizedServiceName, 'g');
@@ -472,16 +476,27 @@ export class GitHubService {
 
     let templateBlue = templateContent.replace(replaceRegex, `${serviceName}Blue`);
     templateBlue = templateBlue.replace(tmpRegex, tmpString);
-    //templateBlue = templateBlue.replace(serviceNameRegex, `${decamelizedServiceName}-blue`);
+    templateBlue = templateBlue.replace(serviceNameRegex, `${decamelizedServiceName}-blue`);
     templateBlue = templateBlue.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
 
     let templateGreen = templateContent.replace(replaceRegex, `${serviceName}Green`);
     templateGreen = templateGreen.replace(tmpRegex, tmpString);
-    //templateGreen = templateGreen.replace(serviceNameRegex, `${decamelizedServiceName}-green`);
+    templateGreen = templateGreen.replace(serviceNameRegex, `${decamelizedServiceName}-green`);
     templateGreen = templateGreen.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
+  */
 
-    const templateBluePathName = template.path.replace(replaceRegex, `${serviceName}Blue`);
-    const templateGreenPathName = template.path.replace(replaceRegex, `${serviceName}Green`);
+    const serviceRegex = new RegExp(serviceName, 'g');
+    const nameRegex = new RegExp(`name: ${decamelizedServiceName}`, 'g');
+    const valuesRegex = new RegExp(`.Values.${serviceName}`, 'g');
+
+    let templateBlue = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-blue`);
+    templateBlue = templateBlue.replace(valuesRegex, `.Values.${serviceName}Blue`);
+
+    let templateGreen = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-green`);
+    templateGreen = templateGreen.replace(valuesRegex, `.Values.${serviceName}Green`);
+
+    const templateBluePathName = template.path.replace(serviceRegex, `${serviceName}Blue`);
+    const templateGreenPathName = template.path.replace(serviceRegex, `${serviceName}Green`);
 
     await repo.writeFile(
       branch,

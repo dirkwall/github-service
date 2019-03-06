@@ -1,7 +1,7 @@
 apiVersion: extensions/v1beta1
 kind: Deployment
 metadata:
-  name: SERVICE_PLACEHOLDER_DEC
+  name: {{ .Chart.Name }}-SERVICE_PLACEHOLDER_DEC
   labels:
     app: {{ .Chart.Name }}-selector-SERVICE_PLACEHOLDER_DEC
     chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
