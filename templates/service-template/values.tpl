@@ -7,7 +7,7 @@ service:
     name: {{ serviceName }}
     type: LoadBalancer
     externalPort: 80
-    internalPort: 80
+    internalPort: 8080
 resources:
     limits:
         cpu: 100m

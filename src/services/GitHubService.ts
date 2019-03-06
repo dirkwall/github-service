@@ -27,11 +27,11 @@ export class GitHubService {
 
   public static gitHubOrg: string;
 
-  private static gatewayTplFile: string = './templates/istio-manifests/gateway.tpl';
-  private static destinationRuleTplFile: string = './templates/istio-manifests/destination_rule.tpl';
-  private static virtualServiceTplFile: string = './templates/istio-manifests/virtual_service.tpl';
-  private static deploymentTplFile: string = './templates/service-template/deployment.tpl';
-  private static serviceTplFile: string = './templates/service-template/service.tpl';
+  private static gatewayTplFile: string = 'keptn/github-service/templates/istio-manifests/gateway.tpl';
+  private static destinationRuleTplFile: string = 'keptn/github-service/templates/istio-manifests/destination_rule.tpl';
+  private static virtualServiceTplFile: string = 'keptn/github-service/templates/istio-manifests/virtual_service.tpl';
+  private static deploymentTplFile: string = 'keptn/github-service/templates/service-template/deployment.tpl';
+  private static serviceTplFile: string = 'keptn/github-service/templates/service-template/service.tpl';
 
   private constructor() {
   }
@@ -70,7 +70,8 @@ export class GitHubService {
         const repository : string = `${image[0]}:${image[1]}`;
         const tag : string = image[2];
 
-        console.log(repository);
+        const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
+        const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
         valuesObj[config.service].image.repository = repository;
         valuesObj[config.service].image.tag = tag;
@@ -288,24 +289,25 @@ export class GitHubService {
         'helm-chart/values.yaml',
         YAML.stringify(valuesObj, 100),
         `[keptn]: Added entry for ${serviceName} in values.yaml`,
-        { encode: true } );
+        { encode: true });
 
       // add deployment and service template
       await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, service);
 
       if (stage.deployment_strategy === 'blue_green_service') {
-        const bgValues = {};
+        const bgValues = valuesObj;
 
         // update values file
-        bgValues[`${serviceName}Blue`] = service.values;
+        bgValues[`${serviceName}Blue`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
         bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
+
         bgValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
 
         if (bgValues[`${serviceName}Blue`].service) {
-            bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
+          bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
         }
         if (bgValues[`${serviceName}Green`].service) {
-            bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
+          bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
         }
         await repo.writeFile(
           stage.name,
@@ -331,9 +333,9 @@ export class GitHubService {
 
           const template : TreeItem = templateTree.tree[j];
 
-          if (template => template.path.indexOf(serviceName) === 0 &&
+          if (template.path.indexOf(serviceName) === 0 &&
              (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
-             (template.path.indexOf('Blue') < 0) && (template.path.indexOf('Green') < 0)) {
+             (template.path.indexOf('Blue') < 0 && template.path.indexOf('Green') < 0)) {
 
             const decamelizedserviceName = decamelize(serviceName, '-');
             const templateContentB64Enc = await repo.getContents(
@@ -348,15 +350,17 @@ export class GitHubService {
                 decamelizedserviceName,
                 serviceName,
                 stage.name,
-                chartName);
-            } else {
+                chartName,
+              );
+            } else if (template.path.indexOf('-deployment.yaml') > 0) {
               await this.createBlueGreenDeployment(
                 repo,
                 serviceName,
                 decamelizedserviceName,
                 stage.name,
                 templateContent,
-                template);
+                template,
+              );
             }
           }
         }
@@ -445,12 +449,12 @@ export class GitHubService {
 
     let templateBlue = templateContent.replace(replaceRegex, `${serviceName}Blue`);
     templateBlue = templateBlue.replace(tmpRegex, tmpString);
-    templateBlue = templateBlue.replace(serviceNameRegex, `${decamelizedServiceName}-blue`);
+    //templateBlue = templateBlue.replace(serviceNameRegex, `${decamelizedServiceName}-blue`);
     templateBlue = templateBlue.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
 
     let templateGreen = templateContent.replace(replaceRegex, `${serviceName}Green`);
     templateGreen = templateGreen.replace(tmpRegex, tmpString);
-    templateGreen = templateGreen.replace(serviceNameRegex, `${decamelizedServiceName}-green`);
+    //templateGreen = templateGreen.replace(serviceNameRegex, `${decamelizedServiceName}-green`);
     templateGreen = templateGreen.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
 
     const templateBluePathName = template.path.replace(replaceRegex, `${serviceName}Blue`);
@@ -462,7 +466,7 @@ export class GitHubService {
       templateBlue,
       `[keptn]: Added blue version of ${serviceName}`,
       { encode: true });
-      
+
     await repo.writeFile(
       branch,
       `helm-chart/templates/${templateGreenPathName}`,
