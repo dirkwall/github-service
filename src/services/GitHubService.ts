@@ -66,12 +66,18 @@ export class GitHubService {
       if (valuesObj[config.service] === undefined) {
         console.log(`[keptn] Service not available.`);
       } else {
-        valuesObj[config.service].image.repository = config.image;
-        valuesObj[config.service].image.tag = 'stable';
+        const image = config.image.split(':');
+        const repository : string = `${image[0]}:${image[1]}`;
+        const tag : string = image[2];
+
+        console.log(repository);
+
+        valuesObj[config.service].image.repository = repository;
+        valuesObj[config.service].image.tag = tag;
 
         const result = await repo.writeFile(
           config.stage, 'helm-chart/values.yaml',
-          YAML.stringify(valuesObj, 100),
+          YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
           `[keptn-config-change]:${config.service}:${config.image}`,
           { encode: true });
         if (result.statusText === 'OK') {
@@ -175,8 +181,8 @@ export class GitHubService {
     try {
       const chart = {
         apiVersion: 'v1',
-        description: 'A Helm chart for Kubernetes',
-        name: 'mean-k8s',
+        description: `A Helm chart for project ${shipyard.project}`,
+        name: shipyard.project,
         version: '0.1.0',
       };
 
@@ -186,7 +192,7 @@ export class GitHubService {
         await repo.writeFile(
           stage.name,
           'helm-chart/Chart.yaml',
-          YAML.stringify(chart),
+          YAML.stringify(chart, 100).replace(/\'/g, ''),
           '[keptn]: Added helm-chart Chart.yaml file.',
           { encode: true });
 
@@ -277,9 +283,12 @@ export class GitHubService {
       // update values file
       const serviceName = service.values.service.name;
       valuesObj[serviceName] = service.values;
-      await repo.writeFile(stage.name, 'helm-chart/values.yaml', YAML.stringify(valuesObj, 100),
-                           `[keptn]: Added entry for ${serviceName} in values.yaml`,
-                           { encode: true });
+      await repo.writeFile(
+        stage.name,
+        'helm-chart/values.yaml',
+        YAML.stringify(valuesObj, 100),
+        `[keptn]: Added entry for ${serviceName} in values.yaml`,
+        { encode: true } );
 
       // add deployment and service template
       await this.addDeploymentServiceTemplates(repo, serviceName, stage.name, service);

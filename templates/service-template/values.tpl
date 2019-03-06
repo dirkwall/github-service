@@ -4,10 +4,10 @@ image:
     tag: null
     pullPolicy: IfNotPresent
 service:
-    name: {{ microServiceName }}
+    name: {{ serviceName }}
     type: LoadBalancer
-    externalPort: 8080
-    internalPort: 8080
+    externalPort: 80
+    internalPort: 80
 resources:
     limits:
         cpu: 100m
