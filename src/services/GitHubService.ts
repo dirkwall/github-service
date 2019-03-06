@@ -120,6 +120,20 @@ export class GitHubService {
     return deleted;
   }
 
+  private async updateWebHook(
+    active: boolean, orgName: string, project: string) : Promise<void> {
+    console.log(`Setting WebHook for ${orgName}-${project} to ${active}`);
+    // get the web hook
+    const repo = await gh.getRepo(orgName, project);
+    const hooks = await repo.listHooks();
+    const hook = hooks.data.find((item) => {
+      return item.config !== undefined && item.config.url.indexOf('event-broker') >= 0;
+    });
+    repo.updateHook(hook.id, {
+      active,
+    });
+  }
+
   private async createRepository(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
     const repository = {
       name : shipyard.project,
@@ -145,16 +159,24 @@ export class GitHubService {
 
   private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
     try {
-      //TODO: const istioIngressGatewayService = await utils.getK8sServiceUrl('istio-ingressgateway', 'istio-system');
-      //TODO: const eventBrokerUri = `event-broker.keptn.${istioIngressGatewayService.ip}.xip.io`;
-      const eventBrokerUri = 'need-to-be-set';
+      const istioIngressGatewayService =
+        await utils.getK8sServiceUrl('istio-ingressgateway', 'istio-system');
+      const eventBrokerUri =
+        `event-broker-ext.keptn.` +
+        `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
+
+      console.log(eventBrokerUri);
+
+      const credService: CredentialsService = CredentialsService.getInstance();
 
       await repo.createHook({
         name: 'web',
         events: ['push'],
         config: {
-          url: `http://${eventBrokerUri}/github`,
+          url: `https://${eventBrokerUri}/github`,
           content_type: 'json',
+          secret: await credService.getKeptnApiToken(),
+          insecure_ssl: 1,
         },
       });
       console.log(`WebHook created: http://${eventBrokerUri}/github`);
@@ -240,12 +262,12 @@ export class GitHubService {
   }
 
   async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
-
     if (service.values && service.values.service) {
 
       const serviceName = service.values.service.name;
       try {
         const repo = await gh.getRepo(orgName, service.project);
+        await this.updateWebHook(false, orgName, service.project);
 
         const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
         const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
@@ -268,10 +290,11 @@ export class GitHubService {
             await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
           }
         }));
-
+        await this.updateWebHook(true, orgName, service.project);
       } catch (e) {
         console.log('[keptn] Onboarding service failed.');
         console.log(e.message);
+        await this.updateWebHook(true, orgName, service.project);
       }
     } else {
       console.log('[keptn] CloudEvent does not contain data.values.');
