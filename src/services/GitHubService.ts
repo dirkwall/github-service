@@ -486,13 +486,16 @@ export class GitHubService {
   */
 
     const serviceRegex = new RegExp(serviceName, 'g');
-    const nameRegex = new RegExp(`name: ${decamelizedServiceName}`, 'g');
+    const nameRegex = new RegExp(`name: {{ .Chart.Name }}-${decamelizedServiceName}`, 'g');
+    const deploymentRegex = new RegExp(`deployment: ${decamelizedServiceName}`, 'g');
     const valuesRegex = new RegExp(`.Values.${serviceName}`, 'g');
 
     let templateBlue = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-blue`);
+    templateBlue = templateBlue.replace(deploymentRegex, `deployment: ${decamelizedServiceName}-blue`);
     templateBlue = templateBlue.replace(valuesRegex, `.Values.${serviceName}Blue`);
 
     let templateGreen = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-green`);
+    templateGreen = templateGreen.replace(deploymentRegex, `deployment: ${decamelizedServiceName}-green`);
     templateGreen = templateGreen.replace(valuesRegex, `.Values.${serviceName}Green`);
 
     const templateBluePathName = template.path.replace(serviceRegex, `${serviceName}Blue`);
