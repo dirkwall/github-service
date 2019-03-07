@@ -1,6 +1,7 @@
 export interface ConfigurationModel {
-  service: string;
-  image: string;
   project: string;
   stage: string;
+  service: string;
+  image: string;
+  tag: string;
 }

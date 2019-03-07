@@ -54,60 +54,87 @@ export class GitHubService {
     return GitHubService.instance;
   }
 
+  getCurrentStage(shipyardObj : any, stage : string) : string {
+    let currentStage = undefined;
+
+    if (stage === undefined || stage === '') {
+      currentStage = shipyardObj.stages[0].name;
+    } else {
+      for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
+        if (shipyardObj.stages[j].name === stage && j+1 < shipyardObj.stages.length) {
+          currentStage = shipyardObj.stages[j+1].name;
+        }
+      }
+    }
+
+    return currentStage;
+  }
+
+  async updateValuesFile(repo : any, valuesObj : any, config : ConfigurationModel, deploymentStrategy: string) : Promise<boolean>{
+    let updated = false;
+
+    const repository : string = config.image;
+    const tag : string = config.tag;
+
+    if (deploymentStrategy === 'direct') {
+      valuesObj[config.service].image.repository = repository;
+      valuesObj[config.service].image.tag = tag;
+
+      const result = await repo.writeFile(
+        config.stage, 'helm-chart/values.yaml',
+        YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
+        `[keptn-config-change]:${config.service}:${config.image}`,
+        { encode: true });
+      if (result.statusText === 'OK') {
+        updated = true;
+      }
+    } else if (deploymentStrategy === 'blue_green_service') {
+      valuesObj[`${config.service}Blue`].image.repository = repository;
+      valuesObj[`${config.service}Green`].image.repository = repository;
+      valuesObj[`${config.service}Blue`].image.tag = tag;
+      valuesObj[`${config.service}Green`].image.tag = tag;
+
+      const result = await repo.writeFile(
+        config.stage, 'helm-chart/values.yaml',
+        YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
+        `[keptn-config-change]:${config.service}:${config.image}`,
+        { encode: true });
+      if (result.statusText === 'OK') {
+        updated = true;
+      }
+    }
+    return updated;
+  }
+
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
     let updated = false;
     try {
       const repo = await gh.getRepo(orgName, config.project);
-      const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
-      let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
-      if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
-      // service not availalbe in values file
-      if (valuesObj[config.service] === undefined) {
-        console.log('[keptn] Service not available.');
-      } else {
-        const image = config.image.split(':');
-        const repository : string = `${image[0]}:${image[1]}`;
-        const tag : string = image[2];
+      const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
+      const shipyardObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
-        const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
-        const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
+      config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
-        for (let j = 0; j < shipyardlObj.stages.length; j = j + 1) {
+      if(config.stage) {
+        const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
+        let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
+        if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
-          if(shipyardlObj.stages[j].name === config.stage) {
-
-            if(shipyardlObj.stages[j].deployment_strategy === 'direct') {
-              valuesObj[config.service].image.repository = repository;
-              valuesObj[config.service].image.tag = tag;
-      
-              const result = await repo.writeFile(
-                config.stage, 'helm-chart/values.yaml',
-                YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-                `[keptn-config-change]:${config.service}:${config.image}`,
-                { encode: true });
-              if (result.statusText === 'OK') {
-                updated = true;
-              }
-            } else if(shipyardlObj.stages[j].deployment_strategy === 'blue_green_service') {
-              valuesObj[`${config.service}Blue`].image.repository = repository;
-              valuesObj[`${config.service}Green`].image.repository = repository;
-              valuesObj[`${config.service}Blue`].image.tag = tag;
-              valuesObj[`${config.service}Green`].image.tag = tag;
-
-              const result = await repo.writeFile(
-                config.stage, 'helm-chart/values.yaml',
-                YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-                `[keptn-config-change]:${config.service}:${config.image}`,
-                { encode: true });
-              if (result.statusText === 'OK') {
-                updated = true;
-              }
-            } 
+        // service not availalbe in values file
+        if (valuesObj[config.service] === undefined) {
+          console.log('[keptn] Service not available.');
+        } else {
+          for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
+            if (shipyardObj.stages[j].name === config.stage) {
+              updated = await this.updateValuesFile(
+                repo,
+                valuesObj,
+                config,
+                shipyardObj.stages[j].deployment_strategy);
+            }
           }
-
         }
-
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
