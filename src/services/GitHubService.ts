@@ -64,7 +64,7 @@ export class GitHubService {
 
       // service not availalbe in values file
       if (valuesObj[config.service] === undefined) {
-        console.log(`[keptn] Service not available.`);
+        console.log('[keptn] Service not available.');
       } else {
         const image = config.image.split(':');
         const repository : string = `${image[0]}:${image[1]}`;
@@ -73,17 +73,41 @@ export class GitHubService {
         const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
         const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
-        valuesObj[config.service].image.repository = repository;
-        valuesObj[config.service].image.tag = tag;
+        for (let j = 0; j < shipyardlObj.stages.length; j = j + 1) {
 
-        const result = await repo.writeFile(
-          config.stage, 'helm-chart/values.yaml',
-          YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-          `[keptn-config-change]:${config.service}:${config.image}`,
-          { encode: true });
-        if (result.statusText === 'OK') {
-          updated = true;
+          if(shipyardlObj.stages[j].name === config.stage) {
+
+            if(shipyardlObj.stages[j].deployment_strategy === 'direct') {
+              valuesObj[config.service].image.repository = repository;
+              valuesObj[config.service].image.tag = tag;
+      
+              const result = await repo.writeFile(
+                config.stage, 'helm-chart/values.yaml',
+                YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
+                `[keptn-config-change]:${config.service}:${config.image}`,
+                { encode: true });
+              if (result.statusText === 'OK') {
+                updated = true;
+              }
+            } else if(shipyardlObj.stages[j].deployment_strategy === 'blue_green_service') {
+              valuesObj[`${config.service}Blue`].image.repository = repository;
+              valuesObj[`${config.service}Green`].image.repository = repository;
+              valuesObj[`${config.service}Blue`].image.tag = tag;
+              valuesObj[`${config.service}Green`].image.tag = tag;
+
+              const result = await repo.writeFile(
+                config.stage, 'helm-chart/values.yaml',
+                YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
+                `[keptn-config-change]:${config.service}:${config.image}`,
+                { encode: true });
+              if (result.statusText === 'OK') {
+                updated = true;
+              }
+            } 
+          }
+
         }
+
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
@@ -143,13 +167,12 @@ export class GitHubService {
     try {
       const org = await gh.getOrganization(orgName);
       const result = await org.createRepo(repository);
-      //console.log(result.statusText);
     } catch (e) {
       if (e.response) {
         if (e.response.statusText === 'Not Found') {
-          console.log(`[keptn] Could not find organziation ${orgName}.`);
+          console.log(`[github-service] Could not find organziation ${orgName}.`);
         } else if (e.response.statusText === 'Unprocessable Entity') {
-          console.log(`[keptn] Repository ${shipyard.project} already available.`);
+          console.log(`[github-service] Repository ${shipyard.project} already available.`);
         }
       }
       console.log(`Error: ${e.message}`);
@@ -162,10 +185,9 @@ export class GitHubService {
     try {
       const istioIngressGatewayService = await utils.getK8sServiceUrl(
         'istio-ingressgateway', 'istio-system');
+
       const eventBrokerUri = `event-broker-ext.keptn.` +
         `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
-
-      console.log(eventBrokerUri);
 
       const credService: CredentialsService = CredentialsService.getInstance();
 
@@ -179,9 +201,10 @@ export class GitHubService {
           insecure_ssl: 1,
         },
       });
-      console.log(`WebHook created: http://${eventBrokerUri}/github`);
+      console.log(`[git-service] Webhook http://${eventBrokerUri}/github activated.`);
+
     } catch (e) {
-      console.log('[keptn] Setting webhook failed.');
+      console.log('[github-service] Setting webhook failed.');
       console.log(e.message);
     }
   }
@@ -194,7 +217,7 @@ export class GitHubService {
         `# keptn takes care of your ${shipyard.project}`,
         '[keptn]: Initial commit', { encode: true });
     } catch (e) {
-      console.log('[keptn] Initial commit failed.');
+      console.log('[github-service] Initial commit failed.');
       console.log(e.message);
     }
   }
@@ -241,7 +264,7 @@ export class GitHubService {
         }
       });
     } catch (e) {
-      console.log('[keptn] Creating branches failed.');
+      console.log('[github-service] Creating branches failed.');
       console.log(e.message);
     }
   }
@@ -256,7 +279,7 @@ export class GitHubService {
         { encode: true });
 
     } catch (e) {
-      console.log('[keptn] Adding shipyard to master failed.');
+      console.log('[github-service] Adding shipyard to master failed.');
       console.log(e.message);
     }
   }
@@ -292,12 +315,12 @@ export class GitHubService {
         }));
         await this.updateWebHook(true, orgName, service.project);
       } catch (e) {
-        console.log('[keptn] Onboarding service failed.');
+        console.log('[github-service] Onboarding service failed.');
         console.log(e.message);
         await this.updateWebHook(true, orgName, service.project);
       }
     } else {
-      console.log('[keptn] CloudEvent does not contain data.values.');
+      console.log('[github-service] CloudEvent does not contain data.values.');
     }
   }
 
@@ -354,7 +377,7 @@ export class GitHubService {
           ).data;
 
         // create blue/green yamls for each deployment/service
-        for (let j = 0; j < templateTree.tree.length; j++) {
+        for (let j = 0; j < templateTree.tree.length; j = j + 1) {
 
           const template : TreeItem = templateTree.tree[j];
 
@@ -394,7 +417,7 @@ export class GitHubService {
     } /*else if (cloudEvent.data.manifest) {
       await repo.writeFile(stage.name, `${serviceName}.yaml`, YAML.stringify(cloudEvent.data.manifest, 100), `[keptn]: Added manifest for ${serviceName}`, { encode: true });
     }*/ else {
-      console.log('[keptn] For onboarding a service, a values or manifest object must be available in the data block.');
+      console.log('[github-service] For onboarding a service, a values or manifest object must be available in the data block.');
     }
   }
 
@@ -409,7 +432,6 @@ export class GitHubService {
       let deploymentTpl = await utils.readFileContent(GitHubService.deploymentTplFile);
       deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
       deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
-      // TODO: let deploymentTpl = cloudEvent.data.templates.deployment
       await repo.writeFile(
         branch,
         `helm-chart/templates/${serviceName}-deployment.yaml`,
@@ -425,7 +447,6 @@ export class GitHubService {
       let serviceTpl = await utils.readFileContent(GitHubService.serviceTplFile);
       serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
       serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
-      // TODO: let serviceTpl = cloudEvent.data.templates.service
       await repo.writeFile(
         branch,
         `helm-chart/templates/${serviceName}-service.yaml`,
@@ -468,34 +489,19 @@ export class GitHubService {
   }
 
   async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
-  /*
-    const replaceRegex = new RegExp(serviceName, 'g');
-    const tmpRegex = new RegExp(`selector-${decamelizedServiceName}`, 'g');
-    const serviceNameRegex = new RegExp(decamelizedServiceName, 'g');
-    const tmpString : string = uuid();
-
-    let templateBlue = templateContent.replace(replaceRegex, `${serviceName}Blue`);
-    templateBlue = templateBlue.replace(tmpRegex, tmpString);
-    templateBlue = templateBlue.replace(serviceNameRegex, `${decamelizedServiceName}-blue`);
-    templateBlue = templateBlue.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
-
-    let templateGreen = templateContent.replace(replaceRegex, `${serviceName}Green`);
-    templateGreen = templateGreen.replace(tmpRegex, tmpString);
-    templateGreen = templateGreen.replace(serviceNameRegex, `${decamelizedServiceName}-green`);
-    templateGreen = templateGreen.replace(new RegExp(tmpString, 'g'), `selector-${decamelizedServiceName}`);
-  */
-
     const serviceRegex = new RegExp(serviceName, 'g');
     const nameRegex = new RegExp(`name: {{ .Chart.Name }}-${decamelizedServiceName}`, 'g');
-    const deploymentRegex = new RegExp(`deployment: ${decamelizedServiceName}`, 'g');
+    const dplyRegex = new RegExp(`deployment: ${decamelizedServiceName}`, 'g');
     const valuesRegex = new RegExp(`.Values.${serviceName}`, 'g');
 
+    // modify deployment template for blue
     let templateBlue = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-blue`);
-    templateBlue = templateBlue.replace(deploymentRegex, `deployment: ${decamelizedServiceName}-blue`);
+    templateBlue = templateBlue.replace(dplyRegex, `deployment: ${decamelizedServiceName}-blue`);
     templateBlue = templateBlue.replace(valuesRegex, `.Values.${serviceName}Blue`);
 
+    // modify deployment template for gree
     let templateGreen = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-green`);
-    templateGreen = templateGreen.replace(deploymentRegex, `deployment: ${decamelizedServiceName}-green`);
+    templateGreen = templateGreen.replace(dplyRegex, `deployment: ${decamelizedServiceName}-green`);
     templateGreen = templateGreen.replace(valuesRegex, `.Values.${serviceName}Green`);
 
     const templateBluePathName = template.path.replace(serviceRegex, `${serviceName}Blue`);
