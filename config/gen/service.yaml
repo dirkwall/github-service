@@ -37,7 +37,7 @@ spec:
 apiVersion: eventing.knative.dev/v1alpha1
 kind: Subscription
 metadata:
-  name: github-service-subscription
+  name: github-keptn-channel-subscription
   namespace: keptn
 spec:
   channel:
@@ -54,7 +54,7 @@ spec:
 apiVersion: eventing.knative.dev/v1alpha1
 kind: Subscription
 metadata:
-  name: github-new-artefact-sub
+  name: github-new-artefact-subscription
   namespace: keptn
 spec:
   channel:

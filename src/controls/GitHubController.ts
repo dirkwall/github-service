@@ -53,8 +53,6 @@ export class GitHubController implements interfaces.Controller {
     next: express.NextFunction,
   ): Promise<void> {
 
-    console.log(request.body);
-
     if (request.body.eventType == 'create.project') {
 
       console.log('[git-service]: Start project creation.');
@@ -85,7 +83,7 @@ export class GitHubController implements interfaces.Controller {
 
       console.log('[git-service]: Secret created.');
 
-    } else if (request.body.eventType == 'sh.keptn.events.new-artefact') {
+    } else if (request.body.type == 'sh.keptn.events.new-artefact') {
 
       console.log('[git-service]: Change configuration.');
 
