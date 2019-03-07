@@ -4,11 +4,14 @@ import { ServiceModel } from '../types/ServiceModel';
 import { Stage, ShipyardModel } from '../types/ShipyardModel';
 import { CredentialsModel } from '../types/CredentialsModel';
 import { ConfigurationModel } from '../types/ConfigurationModel';
+import { KeptnRequestModel } from '../types/KeptnRequestModel';
 import { TreeModel , TreeItem } from '../types/TreeModel';
 
 import { Utils } from '../lib/Utils';
 import { base64decode } from 'nodejs-base64';
 import { v4 as uuid } from 'uuid';
+
+import axios  from 'axios';
 
 const decamelize = require('decamelize');
 const GitHub = require('github-api');
@@ -104,6 +107,19 @@ export class GitHubService {
       }
     }
     return updated;
+  }
+
+  async sendConfigChangedEvent(orgName : string, config : ConfigurationModel) : Promise<boolean> {
+    let sent : boolean = false;
+
+    config.githuborg = orgName;
+
+    const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
+    keptnEvent.data = config;
+    keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
+    await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
+
+    return sent;
   }
 
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {

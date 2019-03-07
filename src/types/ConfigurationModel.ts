@@ -1,4 +1,5 @@
 export interface ConfigurationModel {
+  githuborg: string;
   project: string;
   stage: string;
   service: string;

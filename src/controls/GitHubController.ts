@@ -95,6 +95,12 @@ export class GitHubController implements interfaces.Controller {
 
       console.log('[git-service]: Configuration changed.');
 
+      console.log('[git-service]: Send configuration changed event.');
+
+      await gitHubSvc.sendConfigChangedEvent(GitHubService.gitHubOrg, cloudEvent.data);
+
+      console.log('[git-service]: Configuration changed event sent.');
+
     } else {
       console.log(`[git-service]: This service does not handle the event type ${request.body.eventType}.`);
     }
