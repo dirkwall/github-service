@@ -78,6 +78,9 @@ export class GitHubService {
 
     const repository : string = config.image;
     const tag : string = config.tag;
+    if (config.tag == null) {
+      config.tag = '0.6.0-1';
+    }
 
     if (deploymentStrategy === 'direct') {
       valuesObj[config.service].image.repository = repository;
