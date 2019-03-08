@@ -14,3 +14,12 @@ kubectl apply -f config/gen/service.yaml
 
 # Create secret for USER and API_TOKEN
 kubectl create secret generic -n keptn github-credentials --from-literal=gitorg="$GITHUB_ORG" --from-literal=gituser="$GITHUB_USER" --from-literal=gittoken="$GITHUB_API_TOKEN"
+
+# Configuring outbound network access
+
+gcloud container clusters describe ${CLUSTER_NAME} \
+  --zone=${CLUSTER_ZONE} | grep -e clusterIpv4Cidr -e servicesIpv4Cidr
+
+kubectl edit configmap config-network --namespace knative-serving
+
+> Use an editor of your choice to change the 'istio.sidecar.includeOutboundIPRanges' parameter value from * to the IP range you need
