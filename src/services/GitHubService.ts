@@ -172,7 +172,7 @@ export class GitHubService {
       await this.initialCommit(repo, shipyard);
       await this.createBranchesForEachStages(repo, shipyard);
       await this.addShipyardToMaster(repo, shipyard);
-      await this.setHook(repo, shipyard);
+      // TODO: WEBHOOK - await this.setHook(repo, shipyard);
     }
     return created;
   }
@@ -194,7 +194,6 @@ export class GitHubService {
   private async updateWebHook(
     active: boolean, orgName: string, project: string) : Promise<void> {
     console.log(`Setting WebHook for ${orgName}-${project} to ${active}`);
-    // get the web hook
     const repo = await gh.getRepo(orgName, project);
     const hooks = await repo.listHooks();
     const hook = hooks.data.find((item) => {
@@ -336,7 +335,7 @@ export class GitHubService {
       const serviceName = service.values.service.name;
       try {
         const repo = await gh.getRepo(orgName, service.project);
-        await this.updateWebHook(false, orgName, service.project);
+        //TODO: WEBHOOK - await this.updateWebHook(false, orgName, service.project);
 
         const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
         const shipyardlObj = YAML.parse(base64decode(shipyardYaml.data.content));
@@ -359,11 +358,11 @@ export class GitHubService {
             await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
           }
         }));
-        await this.updateWebHook(true, orgName, service.project);
+        // TODO: WEBHOOK - this.updateWebHook(true, orgName, service.project);
       } catch (e) {
         console.log('[github-service] Onboarding service failed.');
         console.log(e.message);
-        await this.updateWebHook(true, orgName, service.project);
+        // TODO: WEBHOOK - await this.updateWebHook(true, orgName, service.project);
       }
     } else {
       console.log('[github-service] CloudEvent does not contain data.values.');
