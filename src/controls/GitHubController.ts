@@ -20,6 +20,7 @@ import { GitHubService } from '../services/GitHubService';
 import { CredentialsService } from '../services/CredentialsService';
 
 import { CloudEvent } from 'cloudevent';
+import { ConfigurationModel } from 'ConfigurationModel';
 
 @ApiPath({
   name: 'GitHub',
@@ -91,13 +92,14 @@ export class GitHubController implements interfaces.Controller {
 
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
-      await gitHubSvc.updateConfiguration(GitHubService.gitHubOrg, cloudEvent.data);
+      const newConfig: ConfigurationModel = await gitHubSvc.updateConfiguration(
+        GitHubService.gitHubOrg, cloudEvent.data);
 
       console.log('[git-service]: Configuration changed.');
 
       console.log('[git-service]: Send configuration changed event.');
 
-      await gitHubSvc.sendConfigChangedEvent(GitHubService.gitHubOrg, cloudEvent.data);
+      await gitHubSvc.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
 
       console.log('[git-service]: Configuration changed event sent.');
 

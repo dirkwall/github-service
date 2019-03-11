@@ -126,8 +126,8 @@ export class GitHubService {
     return sent;
   }
 
-  async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
-    let updated = false;
+  async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<ConfigurationModel> {
+    let newConfig : ConfigurationModel = config;
     try {
       const repo = await gh.getRepo(orgName, config.project);
 
@@ -136,7 +136,7 @@ export class GitHubService {
 
       config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
-      if(config.stage) {
+      if (config.stage) {
         const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
         let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
         if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
@@ -147,7 +147,9 @@ export class GitHubService {
         } else {
           for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
             if (shipyardObj.stages[j].name === config.stage) {
-              updated = await this.updateValuesFile(
+              newConfig.teststategy = shipyardObj.stages[j].test_strategy;
+              newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
+              await this.updateValuesFile(
                 repo,
                 valuesObj,
                 config,
@@ -162,7 +164,7 @@ export class GitHubService {
         console.log(e.message);
       }
     }
-    return updated;
+    return newConfig;
   }
 
   async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
