@@ -120,6 +120,7 @@ export class GitHubService {
     const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
     keptnEvent.data = config;
     keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
+    console.log(`Data: ${keptnEvent}`);
     await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
 
     return sent;
