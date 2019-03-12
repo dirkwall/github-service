@@ -126,8 +126,8 @@ export class GitHubService {
     return sent;
   }
 
-  async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<ConfigurationModel> {
-    let newConfig : ConfigurationModel = config;
+  async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
+    let updated: boolean = false;
     try {
       const repo = await gh.getRepo(orgName, config.project);
 
@@ -146,6 +146,8 @@ export class GitHubService {
           console.log('[keptn] Service not available.');
         } else {
           for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
+            const newConfig : ConfigurationModel = config;
+
             if (shipyardObj.stages[j].name === config.stage) {
               newConfig.teststategy = shipyardObj.stages[j].test_strategy;
               newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
@@ -155,6 +157,11 @@ export class GitHubService {
                 config,
                 shipyardObj.stages[j].deployment_strategy);
             }
+
+            updated = true;
+            console.log('[git-service]: Send configuration changed event.');
+            await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
+            console.log('[git-service]: Configuration changed event sent.');
           }
         }
       }
@@ -164,7 +171,7 @@ export class GitHubService {
         console.log(e.message);
       }
     }
-    return newConfig;
+    return updated;
   }
 
   async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
