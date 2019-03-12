@@ -80,9 +80,7 @@ export class GitHubController implements interfaces.Controller {
 
       const cloudEvent : CloudEvent = request.body;
       const credSvc: CredentialsService = CredentialsService.getInstance();
-      //await credSvc.updateGithubConfig(cloudEvent.data);
-
-      console.log('[github-service]: Secret created.');
+      await credSvc.updateGithubConfig(cloudEvent.data);
 
     } else if (request.body.type == 'sh.keptn.events.new-artefact') {
 
