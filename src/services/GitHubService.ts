@@ -78,9 +78,6 @@ export class GitHubService {
 
     const repository : string = config.image;
     const tag : string = config.tag;
-    if (config.tag == null) {
-      config.tag = '0.6.0-1';
-    }
 
     if (deploymentStrategy === 'direct') {
       valuesObj[config.service].image.repository = repository;
@@ -153,19 +150,21 @@ export class GitHubService {
               const newConfig : ConfigurationModel = config;
 
               if (shipyardObj.stages[j].name === config.stage) {
+
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
-                await this.updateValuesFile(
+                updated = await this.updateValuesFile(
                   repo,
                   valuesObj,
                   config,
                   shipyardObj.stages[j].deployment_strategy);
-              }
 
-              updated = true;
-              console.log('[git-service]: Send configuration changed event.');
-              await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
-              console.log('[git-service]: Configuration changed event sent.');
+                if (updated) {
+                  console.log('[git-service]: Send configuration changed event.');
+                  await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
+                  console.log('[git-service]: Configuration changed event sent.');
+                }
+              }
             }
           }
         } else {
