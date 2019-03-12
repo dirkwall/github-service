@@ -129,45 +129,54 @@ export class GitHubService {
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
     let updated: boolean = false;
     try {
-      const repo = await gh.getRepo(orgName, config.project);
 
-      const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
-      const shipyardObj = YAML.parse(base64decode(shipyardYaml.data.content));
+      if (config.project) {
+        const repo = await gh.getRepo(orgName, config.project);
 
-      config.stage = this.getCurrentStage(shipyardObj, config.stage);
+        const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
+        const shipyardObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
-      if (config.stage) {
-        const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
-        let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
-        if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
+        config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
-        // service not availalbe in values file
-        if (valuesObj[config.service] === undefined) {
-          console.log('[keptn] Service not available.');
-        } else {
-          for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
-            const newConfig : ConfigurationModel = config;
+        console.log(`TAG: ${config.tag}`);
 
-            if (shipyardObj.stages[j].name === config.stage) {
-              newConfig.teststategy = shipyardObj.stages[j].test_strategy;
-              newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
-              await this.updateValuesFile(
-                repo,
-                valuesObj,
-                config,
-                shipyardObj.stages[j].deployment_strategy);
+        if (config.stage && config.tag) {
+          const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
+          let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
+          if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
+
+          // service not availalbe in values file
+          if (valuesObj[config.service] === undefined) {
+            console.log('[git-service]: Service not available.');
+          } else {
+            for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
+              const newConfig : ConfigurationModel = config;
+
+              if (shipyardObj.stages[j].name === config.stage) {
+                newConfig.teststategy = shipyardObj.stages[j].test_strategy;
+                newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
+                await this.updateValuesFile(
+                  repo,
+                  valuesObj,
+                  config,
+                  shipyardObj.stages[j].deployment_strategy);
+              }
+
+              updated = true;
+              console.log('[git-service]: Send configuration changed event.');
+              await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
+              console.log('[git-service]: Configuration changed event sent.');
             }
-
-            updated = true;
-            console.log('[git-service]: Send configuration changed event.');
-            await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
-            console.log('[git-service]: Configuration changed event sent.');
           }
+        } else {
+          console.log(`[git-service]: Tag not defined.`);
         }
+      } else {
+        console.log(`[git-service]: Project not defined.`);
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[keptn] Could not find values file.`);
+        console.log(`[git-service]: Could not find shipyard file.`);
         console.log(e.message);
       }
     }
