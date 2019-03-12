@@ -392,7 +392,7 @@ export class GitHubService {
       await repo.writeFile(
         stage.name,
         'helm-chart/values.yaml',
-        YAML.stringify(valuesObj, 100),
+        YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
         `[keptn]: Added entry for ${serviceName} in values.yaml`,
         { encode: true });
 
@@ -420,7 +420,7 @@ export class GitHubService {
         await repo.writeFile(
           stage.name,
           `helm-chart/values.yaml`,
-          YAML.stringify(bgValues, 100),
+          YAML.stringify(bgValues, 100).replace(/\'/g, ''),
           `[keptn]: Added blue/green values`,
           { encode: true });
 
