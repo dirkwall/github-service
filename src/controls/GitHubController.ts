@@ -56,47 +56,47 @@ export class GitHubController implements interfaces.Controller {
 
     if (request.body.eventType == 'create.project') {
 
-      console.log('[git-service]: Start project creation.');
+      console.log('[github-service]: Start project creation.');
 
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
 
-      console.log('[git-service]: Project created.');
+      console.log('[github-service]: Project created.');
 
     } else if (request.body.eventType == 'onboard.service') {
 
-      console.log('[git-service]: Start service onboarding.');
+      console.log('[github-service]: Start service onboarding.');
 
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
-      console.log('[git-service]: Service onboarded.');
+      console.log('[github-service]: Service onboarded.');
 
     } else if (request.body.eventType == 'configure') {
 
-      console.log('[git-service]: Start secret creation.');
+      console.log('[github-service]: Start secret creation.');
 
       const cloudEvent : CloudEvent = request.body;
       const credSvc: CredentialsService = CredentialsService.getInstance();
       //await credSvc.updateGithubConfig(cloudEvent.data);
 
-      console.log('[git-service]: Secret created.');
+      console.log('[github-service]: Secret created.');
 
     } else if (request.body.type == 'sh.keptn.events.new-artefact') {
 
-      console.log('[git-service]: Change configuration.');
+      console.log('[github-service]: Change configuration.');
 
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       const updated: boolean = await gitHubSvc.updateConfiguration(
         GitHubService.gitHubOrg, cloudEvent.data);
 
-      console.log('[git-service]: Configuration changed.');
+      console.log('[github-service]: Configuration changed.');
 
     } else {
-      console.log(`[git-service]: This service does not handle the event type ${request.body.eventType}.`);
+      console.log(`[github-service]: This service does not handle the event type ${request.body.eventType}.`);
     }
 
     const result = {

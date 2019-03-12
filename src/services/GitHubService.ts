@@ -30,11 +30,11 @@ export class GitHubService {
 
   public static gitHubOrg: string;
 
-  private static gatewayTplFile: string = 'keptn/github-service/templates/istio-manifests/gateway.tpl';
-  private static destinationRuleTplFile: string = 'keptn/github-service/templates/istio-manifests/destination_rule.tpl';
-  private static virtualServiceTplFile: string = 'keptn/github-service/templates/istio-manifests/virtual_service.tpl';
-  private static deploymentTplFile: string = 'keptn/github-service/templates/service-template/deployment.tpl';
-  private static serviceTplFile: string = 'keptn/github-service/templates/service-template/service.tpl';
+  private static gatewayTplFile: string = './templates/istio-manifests/gateway.tpl';
+  private static destinationRuleTplFile: string = './templates/istio-manifests/destination_rule.tpl';
+  private static virtualServiceTplFile: string = './templates/istio-manifests/virtual_service.tpl';
+  private static deploymentTplFile: string = './templates/service-template/deployment.tpl';
+  private static serviceTplFile: string = './templates/service-template/service.tpl';
 
   private constructor() {
   }
@@ -141,7 +141,7 @@ export class GitHubService {
 
           // service not availalbe in values file
           if (valuesObj[config.service] === undefined) {
-            console.log('[git-service]: Service not available.');
+            console.log('[github-service]: Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
               const newConfig : ConfigurationModel = config;
@@ -157,22 +157,22 @@ export class GitHubService {
                   shipyardObj.stages[j].deployment_strategy);
 
                 if (updated) {
-                  console.log('[git-service]: Send configuration changed event.');
+                  console.log('[github-service]: Send configuration changed event.');
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
-                  console.log('[git-service]: Configuration changed event sent.');
+                  console.log('[github-service]: Configuration changed event sent.');
                 }
               }
             }
           }
         } else {
-          console.log(`[git-service]: Tag not defined.`);
+          console.log(`[github-service]: Tag not defined.`);
         }
       } else {
-        console.log(`[git-service]: Project not defined.`);
+        console.log(`[github-service]: Project not defined.`);
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[git-service]: Could not find shipyard file.`);
+        console.log(`[github-service]: Could not find shipyard file.`);
         console.log(e.message);
       }
     }
@@ -261,7 +261,7 @@ export class GitHubService {
           insecure_ssl: 1,
         },
       });
-      console.log(`[git-service] Webhook http://${eventBrokerUri}/github activated.`);
+      console.log(`[github-service] Webhook http://${eventBrokerUri}/github activated.`);
 
     } catch (e) {
       console.log('[github-service] Setting webhook failed.');

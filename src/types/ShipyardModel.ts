@@ -12,4 +12,5 @@ export class ShipyardModel {
 export class Stage {
   name: string;
   deployment_strategy: string;
+  test_strategy: string;
 }
