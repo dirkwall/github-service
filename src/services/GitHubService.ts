@@ -117,7 +117,6 @@ export class GitHubService {
     const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
     keptnEvent.data = config;
     keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
-    console.log(`Data: ${keptnEvent}`);
     await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
 
     return sent;
@@ -134,8 +133,6 @@ export class GitHubService {
         const shipyardObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
-
-        console.log(`TAG: ${config.tag}`);
 
         if (config.stage && config.tag) {
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
