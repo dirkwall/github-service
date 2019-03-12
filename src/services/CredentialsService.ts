@@ -66,9 +66,9 @@ export class CredentialsService {
     if (secret.body.items && secret.body.items.length > 0) {
       const ghItem = secret.body.items.find(item => item.metadata.name === 'github-credentials');
       if (ghItem && ghItem.data !== undefined) {
-        gitHubCredentials.org = base64decode(ghItem.data.gitorg);
-        gitHubCredentials.user = base64decode(ghItem.data.gituser);
-        gitHubCredentials.token = base64decode(ghItem.data.gittoken);
+        gitHubCredentials.org = base64decode(ghItem.data.org);
+        gitHubCredentials.user = base64decode(ghItem.data.user);
+        gitHubCredentials.token = base64decode(ghItem.data.token);
       } else {
         console.log('[github-service] The secret does not contain the proper information.');
       }

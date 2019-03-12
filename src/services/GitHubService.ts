@@ -30,11 +30,11 @@ export class GitHubService {
 
   public static gitHubOrg: string;
 
-  private static gatewayTplFile: string = './templates/istio-manifests/gateway.tpl';
-  private static destinationRuleTplFile: string = './templates/istio-manifests/destination_rule.tpl';
-  private static virtualServiceTplFile: string = './templates/istio-manifests/virtual_service.tpl';
-  private static deploymentTplFile: string = './templates/service-template/deployment.tpl';
-  private static serviceTplFile: string = './templates/service-template/service.tpl';
+  private static gatewayTplFile: string = 'keptn/github-service/templates/istio-manifests/gateway.tpl';
+  private static destinationRuleTplFile: string = 'keptn/github-service/templates/istio-manifests/destination_rule.tpl';
+  private static virtualServiceTplFile: string = 'keptn/github-service/templates/istio-manifests/virtual_service.tpl';
+  private static deploymentTplFile: string = 'keptn/github-service/templates/service-template/deployment.tpl';
+  private static serviceTplFile: string = 'keptn/github-service/templates/service-template/service.tpl';
 
   private constructor() {
   }
