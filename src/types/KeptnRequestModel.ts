@@ -9,6 +9,7 @@ export class KeptnRequestModel {
     TESTS_FINISHED: 'sh.keptn.events.tests-finished',
     EVALUATION_DONE: 'sh.keptn.events.evaluation-done',
     PROBLEM: 'sh.keptn.events.problem',
+    LOG: 'sh.keptn.events.log',
   };
 
   public specversion: string;

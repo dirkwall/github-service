@@ -21,6 +21,7 @@ import { CredentialsService } from '../services/CredentialsService';
 
 import { CloudEvent } from 'cloudevent';
 import { ConfigurationModel } from 'ConfigurationModel';
+import { LoggingService } from '../services/LoggingService';
 
 @ApiPath({
   name: 'GitHub',
@@ -54,6 +55,9 @@ export class GitHubController implements interfaces.Controller {
     next: express.NextFunction,
   ): Promise<void> {
     console.log(JSON.stringify(request.body));
+    const loggingService = new LoggingService();
+    await loggingService.connect(request.body.data.channelInfo);
+    loggingService.logMessage('something', false);
     if (request.body.eventType == 'create.project') {
 
       console.log('[github-service]: Start project creation.');
