@@ -11,6 +11,8 @@ import { Utils } from '../lib/Utils';
 import { base64decode } from 'nodejs-base64';
 import { v4 as uuid } from 'uuid';
 
+import { LoggingService } from './LoggingService';
+
 import axios  from 'axios';
 
 const decamelize = require('decamelize');
@@ -179,14 +181,14 @@ export class GitHubService {
     return updated;
   }
 
-  async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
-    const created: boolean = await this.createRepository(orgName, shipyard);
+  async createProject(orgName : string, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<boolean> {
+    const created: boolean = await this.createRepository(orgName, shipyard, wsLogger);
     if (created) {
       const repo = await gh.getRepo(orgName, shipyard.project);
 
-      await this.initialCommit(repo, shipyard);
-      await this.createBranchesForEachStages(repo, shipyard);
-      await this.addShipyardToMaster(repo, shipyard);
+      await this.initialCommit(repo, shipyard, wsLogger);
+      await this.createBranchesForEachStages(repo, shipyard, wsLogger);
+      await this.addShipyardToMaster(repo, shipyard, wsLogger);
       // TODO: WEBHOOK - await this.setHook(repo, shipyard);
     }
     return created;
@@ -219,7 +221,7 @@ export class GitHubService {
     });
   }
 
-  private async createRepository(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
+  private async createRepository(orgName : string, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<boolean> {
     const repository = {
       name : shipyard.project,
     };
@@ -230,12 +232,18 @@ export class GitHubService {
     } catch (e) {
       if (e.response) {
         if (e.response.statusText === 'Not Found') {
-          console.log(`[github-service] Could not find organziation ${orgName}.`);
+          const logMsg = `[github-service] Could not find organziation ${orgName}.`;
+          console.log(logMsg);
+          wsLogger.logMessage(logMsg, false);
         } else if (e.response.statusText === 'Unprocessable Entity') {
-          console.log(`[github-service] Repository ${shipyard.project} already available.`);
+          const logMsg = `[github-service] Repository ${shipyard.project} already available.`
+          console.log(logMsg);
+          wsLogger.logMessage(logMsg, false);
         }
       }
-      console.log(`Error: ${e.message}`);
+      const logMsg = `Error: ${e.message}`
+      console.log(logMsg);
+      wsLogger.logMessage(logMsg, true);
       return false;
     }
     return true;
@@ -269,7 +277,7 @@ export class GitHubService {
     }
   }
 
-  private async initialCommit(repo : any, shipyard : ShipyardModel) : Promise<any> {
+  private async initialCommit(repo : any, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -277,12 +285,14 @@ export class GitHubService {
         `# keptn takes care of your ${shipyard.project}`,
         '[keptn]: Initial commit', { encode: true });
     } catch (e) {
-      console.log('[github-service] Initial commit failed.');
+      const logMsg = '[github-service] Initial commit failed.';
+      console.log(logMsg);
+      wsLogger.logMessage(logMsg, true);
       console.log(e.message);
     }
   }
 
-  private async createBranchesForEachStages(repo : any, shipyard : ShipyardModel) : Promise<any> {
+  private async createBranchesForEachStages(repo : any, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<any> {
     try {
       const chart = {
         apiVersion: 'v1',
@@ -324,12 +334,14 @@ export class GitHubService {
         }
       });
     } catch (e) {
-      console.log('[github-service] Creating branches failed.');
+      const logMsg = '[github-service] Creating branches failed.';
+      console.log(logMsg);
+      wsLogger.logMessage(logMsg, true);
       console.log(e.message);
     }
   }
 
-  private async addShipyardToMaster(repo: any, shipyard : ShipyardModel) : Promise<any> {
+  private async addShipyardToMaster(repo: any, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -339,7 +351,9 @@ export class GitHubService {
         { encode: true });
 
     } catch (e) {
-      console.log('[github-service] Adding shipyard to master failed.');
+      const logMsg = '[github-service] Adding shipyard to master failed.'
+      console.log(logMsg);
+      wsLogger.logMessage(logMsg, true);
       console.log(e.message);
     }
   }

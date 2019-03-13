@@ -55,18 +55,24 @@ export class GitHubController implements interfaces.Controller {
     next: express.NextFunction,
   ): Promise<void> {
     console.log(JSON.stringify(request.body));
-    const loggingService = new LoggingService();
-    await loggingService.connect(request.body.data.channelInfo);
-    loggingService.logMessage('something', false);
+    const wsLogger = new LoggingService();
+    if (request.body.data.channelInfo !== undefined) {
+      await wsLogger.connect(request.body.data.channelInfo);
+    }
+    
     if (request.body.eventType == 'create.project') {
 
-      console.log('[github-service]: Start project creation.');
+      const startMsg = '[github-service]: Start project creation.';
+      console.log(startMsg);
+      wsLogger.logMessage(startMsg, false);
 
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
-      await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
+      await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data, wsLogger);
 
-      console.log('[github-service]: Project created.');
+      const endMsg = '[github-service]: Project created.'
+      console.log(endMsg);
+      wsLogger.logMessage(endMsg, true);
 
     } else if (request.body.eventType == 'onboard.service') {
 

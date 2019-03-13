@@ -6,7 +6,6 @@ const WebSocket = require('ws');
 export class LoggingService {
 
   private webSocket: any;
-  private connectionOpen: boolean = false;
 
   constructor() {
 
@@ -33,12 +32,14 @@ export class LoggingService {
   }
 
   logMessage(message: string, terminate: boolean): void {
-    const logEvent = new KeptnRequestModel();
-    logEvent.type = KeptnRequestModel.EVENT_TYPES.LOG;
-    logEvent.data = {
-      message,
-      terminate,
-    };
-    this.webSocket.send(JSON.stringify(logEvent));
+    if (this.webSocket !== undefined) {
+      const logEvent = new KeptnRequestModel();
+      logEvent.type = KeptnRequestModel.EVENT_TYPES.LOG;
+      logEvent.data = {
+        message,
+        terminate,
+      };
+      this.webSocket.send(JSON.stringify(logEvent));
+    }
   }
 }
