@@ -16,6 +16,7 @@ import { LoggingService } from './LoggingService';
 import axios  from 'axios';
 
 const decamelize = require('decamelize');
+const camelize = require('camelize')
 const GitHub = require('github-api');
 const Mustache = require('mustache');
 const YAML = require('yamljs');
@@ -41,22 +42,24 @@ export class GitHubService {
   private constructor() {
   }
 
-  static async getInstance() {
+  static async getInstance() : Promise<GitHubService> {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
-
-      // initialize github api with user and token
-      const credService: CredentialsService = CredentialsService.getInstance();
-      const githubCreds: CredentialsModel = await credService.getGithubCredentials();
-      GitHubService.gitHubOrg = githubCreds.org;
-
-      gh = new GitHub({
-        username: githubCreds.user,
-        password: githubCreds.token,
-        auth: 'basic',
-      });
+      await this.updateCredentials();
     }
     return GitHubService.instance;
+  }
+
+  static async updateCredentials() {
+    const credService: CredentialsService = CredentialsService.getInstance();
+    const githubCreds: CredentialsModel = await credService.getGithubCredentials();
+    GitHubService.gitHubOrg = githubCreds.org;
+
+    gh = new GitHub({
+      username: githubCreds.user,
+      password: githubCreds.token,
+      auth: 'basic',
+    });
   }
 
   getCurrentStage(shipyardObj : any, stage : string) : string {
@@ -81,28 +84,30 @@ export class GitHubService {
     const repository : string = config.image;
     const tag : string = config.tag;
 
+    const serviceName : string = camelize(config.service);
+
     if (deploymentStrategy === 'direct') {
-      valuesObj[config.service].image.repository = repository;
-      valuesObj[config.service].image.tag = tag;
+      valuesObj[serviceName].image.repository = repository;
+      valuesObj[serviceName].image.tag = tag;
 
       const result = await repo.writeFile(
         config.stage, 'helm-chart/values.yaml',
         YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${config.service}:${config.image}`,
+        `[keptn-config-change]:${serviceName}:${config.image}`,
         { encode: true });
       if (result.statusText === 'OK') {
         updated = true;
       }
     } else if (deploymentStrategy === 'blue_green_service') {
-      valuesObj[`${config.service}Blue`].image.repository = repository;
-      valuesObj[`${config.service}Green`].image.repository = repository;
-      valuesObj[`${config.service}Blue`].image.tag = tag;
-      valuesObj[`${config.service}Green`].image.tag = tag;
+      valuesObj[`${serviceName}Blue`].image.repository = repository;
+      valuesObj[`${serviceName}Green`].image.repository = repository;
+      valuesObj[`${serviceName}Blue`].image.tag = tag;
+      valuesObj[`${serviceName}Green`].image.tag = tag;
 
       const result = await repo.writeFile(
         config.stage, 'helm-chart/values.yaml',
         YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${config.service}:${config.image}`,
+        `[keptn-config-change]:${serviceName}:${config.image}`,
         { encode: true });
       if (result.statusText === 'OK') {
         updated = true;
@@ -142,7 +147,7 @@ export class GitHubService {
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
           // service not availalbe in values file
-          if (valuesObj[config.service] === undefined) {
+          if (valuesObj[camelize(config.service)] === undefined) {
             console.log('[github-service]: Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
@@ -361,7 +366,7 @@ export class GitHubService {
   async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
     if (service.values && service.values.service) {
 
-      const serviceName = service.values.service.name;
+      const serviceName = camelize(service.values.service.name);
       try {
         const repo = await gh.getRepo(orgName, service.project);
         //TODO: WEBHOOK - await this.updateWebHook(false, orgName, service.project);
@@ -401,7 +406,7 @@ export class GitHubService {
   private async addArtifactsToBranch(repo: any, orgName: string, service : ServiceModel, stage: Stage, valuesObj: any, chartName: string) {
     if (service.values) {
       // update values file
-      const serviceName = service.values.service.name;
+      const serviceName = camelize(service.values.service.name);
       valuesObj[serviceName] = service.values;
       await repo.writeFile(
         stage.name,
