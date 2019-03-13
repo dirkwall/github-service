@@ -16,9 +16,12 @@ spec:
         deployment: SERVICE_PLACEHOLDER_DEC
     spec:
       containers:
-      - name: {{ .Chart.Name }}
+      - name: {{ .Values.SERVICE_PLACEHOLDER_C.container.name }}
         image: "{{ .Values.SERVICE_PLACEHOLDER_C.image.repository }}:{{ .Values.SERVICE_PLACEHOLDER_C.image.tag }}"
         imagePullPolicy: {{ .Values.SERVICE_PLACEHOLDER_C.image.pullPolicy }}
+        env:
+        - name: DT_TAGS
+          value: "application={{ .Chart.Name }}"
         ports:
         - name: internalport
           containerPort: {{ .Values.SERVICE_PLACEHOLDER_C.service.internalPort }}
