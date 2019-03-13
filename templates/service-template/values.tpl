@@ -8,7 +8,7 @@ service:
     type: LoadBalancer
     externalPort: 80
     internalPort: 8080
-container
+container:
     name: {{ serviceName }}
 resources:
     limits:

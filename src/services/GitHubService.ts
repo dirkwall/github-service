@@ -30,11 +30,11 @@ export class GitHubService {
 
   public static gitHubOrg: string;
 
-  private static gatewayTplFile: string = 'keptn/github-service/templates/istio-manifests/gateway.tpl';
-  private static destinationRuleTplFile: string = 'keptn/github-service/templates/istio-manifests/destination_rule.tpl';
-  private static virtualServiceTplFile: string = 'keptn/github-service/templates/istio-manifests/virtual_service.tpl';
-  private static deploymentTplFile: string = 'keptn/github-service/templates/service-template/deployment.tpl';
-  private static serviceTplFile: string = 'keptn/github-service/templates/service-template/service.tpl';
+  private static gatewayTplFile: string = './templates/istio-manifests/gateway.tpl';
+  private static destinationRuleTplFile: string = './templates/istio-manifests/destination_rule.tpl';
+  private static virtualServiceTplFile: string = './templates/istio-manifests/virtual_service.tpl';
+  private static deploymentTplFile: string = './templates/service-template/deployment.tpl';
+  private static serviceTplFile: string = './templates/service-template/service.tpl';
 
   private constructor() {
   }
@@ -367,9 +367,9 @@ export class GitHubService {
 
           // service already defined in helm chart
           if (valuesObj[serviceName] !== undefined) {
-            console.log(`[keptn] Service already available in stage: ${stage.name}.`);
+            console.log(`[github-service] Service already available in stage: ${stage.name}.`);
           } else {
-            console.log(`[keptn] Adding artifacts to: ${stage.name}.`);
+            console.log(`[github-service] Adding artifacts to: ${stage.name}.`);
             await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
           }
         }));
@@ -485,11 +485,15 @@ export class GitHubService {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
+    let deploymentTpl : string = undefined;
+
     if (service.templates && service.templates.deployment) {
-      // TODO: Read deployment from data.templates block.
-      console.log('Reading deployment template from cloudEvent not impleted.');
-    } else { // Use Template
-      let deploymentTpl = await utils.readFileContent(GitHubService.deploymentTplFile);
+      deploymentTpl = service.templates.deployment;
+    } else {
+      deploymentTpl = await utils.readFileContent(GitHubService.deploymentTplFile);
+    }
+
+    if (deploymentTpl !== undefined) {
       deploymentTpl = deploymentTpl.replace(cServiceNameRegex, serviceName);
       deploymentTpl = deploymentTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
       await repo.writeFile(
@@ -500,11 +504,15 @@ export class GitHubService {
         { encode: true });
     }
 
+    let serviceTpl : string = undefined;
+
     if (service.templates && service.templates.service) {
-      // TODO: Read deployment from data.templates block.
-      console.log('Reading service template from cloudEvent not impleted.');
-    } else { // Use Template
-      let serviceTpl = await utils.readFileContent(GitHubService.serviceTplFile);
+      serviceTpl = service.templates.deployment;
+    } else {
+      serviceTpl = await utils.readFileContent(GitHubService.serviceTplFile);
+    }
+
+    if (serviceTpl !== undefined) {
       serviceTpl = serviceTpl.replace(cServiceNameRegex, serviceName);
       serviceTpl = serviceTpl.replace(decServiceNameRegex, decamelize(serviceName, '-'));
       await repo.writeFile(
@@ -512,7 +520,7 @@ export class GitHubService {
         `helm-chart/templates/${serviceName}-service.yaml`,
         serviceTpl,
         `[keptn]: Added service yml template for app: ${serviceName}.`,
-        { encode: true } );
+        { encode: true });
     }
   }
 
