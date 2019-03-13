@@ -1,5 +1,0 @@
-project: sockshop
-stages:
-    - {name: devy, deployment_strategy: direct, test_strategy: functional}
-    - {name: stagingy, deployment_strategy: direct, test_strategy: performance}
-    - {name: productiony, deployment_strategy: blue_green_service}
