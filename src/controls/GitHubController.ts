@@ -53,7 +53,7 @@ export class GitHubController implements interfaces.Controller {
     response: express.Response,
     next: express.NextFunction,
   ): Promise<void> {
-
+    console.log(JSON.stringify(request.body));
     if (request.body.eventType == 'create.project') {
 
       console.log('[github-service]: Start project creation.');
