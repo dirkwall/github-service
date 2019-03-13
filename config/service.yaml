@@ -24,7 +24,7 @@ spec:
             name: kaniko
             arguments:
               - name: IMAGE
-                value: docker-registry.cicd.svc.cluster.local:5000/keptn/github-service:latest
+                value: docker-registry.keptn.svc.cluster.local:5000/keptn/github-service:latest
       revisionTemplate:
         spec:
           container:
