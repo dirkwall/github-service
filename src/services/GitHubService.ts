@@ -14,6 +14,7 @@ import { v4 as uuid } from 'uuid';
 import axios  from 'axios';
 
 const decamelize = require('decamelize');
+const camelize = require('camelize')
 const GitHub = require('github-api');
 const Mustache = require('mustache');
 const YAML = require('yamljs');
@@ -349,7 +350,7 @@ export class GitHubService {
   async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
     if (service.values && service.values.service) {
 
-      const serviceName = service.values.service.name;
+      const serviceName = camelize(service.values.service.name);
       try {
         const repo = await gh.getRepo(orgName, service.project);
         //TODO: WEBHOOK - await this.updateWebHook(false, orgName, service.project);
