@@ -26,9 +26,13 @@ spec:
               - name: IMAGE
                 value: docker-registry.keptn.svc.cluster.local:5000/keptn/github-service:latest
       revisionTemplate:
+        metadata:
+          annotations:
+            # Disable scale to zero with a minScale of 1.
+            autoscaling.knative.dev/minScale: "1"
         spec:
           container:
-            image: 10.7.254.124:5000/keptn/github-service:latest
+            image: REGISTRY_URI_PLACEHOLDER:5000/keptn/github-service:latest
             env: 
 ---
 
