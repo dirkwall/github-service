@@ -512,7 +512,7 @@ export class GitHubService {
     let serviceTpl : string = undefined;
 
     if (service.templates && service.templates.service) {
-      serviceTpl = service.templates.deployment;
+      serviceTpl = service.templates.service;
     } else {
       serviceTpl = await utils.readFileContent(GitHubService.serviceTplFile);
     }
