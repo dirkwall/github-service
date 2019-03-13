@@ -82,28 +82,30 @@ export class GitHubService {
     const repository : string = config.image;
     const tag : string = config.tag;
 
+    const serviceName : string = camelize(config.service);
+
     if (deploymentStrategy === 'direct') {
-      valuesObj[config.service].image.repository = repository;
-      valuesObj[config.service].image.tag = tag;
+      valuesObj[serviceName].image.repository = repository;
+      valuesObj[serviceName].image.tag = tag;
 
       const result = await repo.writeFile(
         config.stage, 'helm-chart/values.yaml',
         YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${config.service}:${config.image}`,
+        `[keptn-config-change]:${serviceName}:${config.image}`,
         { encode: true });
       if (result.statusText === 'OK') {
         updated = true;
       }
     } else if (deploymentStrategy === 'blue_green_service') {
-      valuesObj[`${config.service}Blue`].image.repository = repository;
-      valuesObj[`${config.service}Green`].image.repository = repository;
-      valuesObj[`${config.service}Blue`].image.tag = tag;
-      valuesObj[`${config.service}Green`].image.tag = tag;
+      valuesObj[`${serviceName}Blue`].image.repository = repository;
+      valuesObj[`${serviceName}Green`].image.repository = repository;
+      valuesObj[`${serviceName}Blue`].image.tag = tag;
+      valuesObj[`${serviceName}Green`].image.tag = tag;
 
       const result = await repo.writeFile(
         config.stage, 'helm-chart/values.yaml',
         YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${config.service}:${config.image}`,
+        `[keptn-config-change]:${serviceName}:${config.image}`,
         { encode: true });
       if (result.statusText === 'OK') {
         updated = true;
@@ -143,7 +145,7 @@ export class GitHubService {
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
           // service not availalbe in values file
-          if (valuesObj[config.service] === undefined) {
+          if (valuesObj[camelize(config.service)] === undefined) {
             console.log('[github-service]: Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
