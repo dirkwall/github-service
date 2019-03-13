@@ -390,7 +390,7 @@ export class GitHubService {
   private async addArtifactsToBranch(repo: any, orgName: string, service : ServiceModel, stage: Stage, valuesObj: any, chartName: string) {
     if (service.values) {
       // update values file
-      const serviceName = service.values.service.name;
+      const serviceName = camelize(service.values.service.name);
       valuesObj[serviceName] = service.values;
       await repo.writeFile(
         stage.name,
