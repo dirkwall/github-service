@@ -9,3 +9,6 @@ cat config/service.yaml | \
 
 kubectl delete -f config/gen/service.yaml
 kubectl apply -f config/gen/service.yaml
+
+# Create secret for ORG, USER, TOKEN
+kubectl create secret generic -n keptn github-credentials --from-literal=org=keptn-tiger --from-literal=user=johannes-b --from-literal=token=**

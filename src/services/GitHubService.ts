@@ -39,22 +39,24 @@ export class GitHubService {
   private constructor() {
   }
 
-  static async getInstance() {
+  static async getInstance() : Promise<GitHubService> {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
-
-      // initialize github api with user and token
-      const credService: CredentialsService = CredentialsService.getInstance();
-      const githubCreds: CredentialsModel = await credService.getGithubCredentials();
-      GitHubService.gitHubOrg = githubCreds.org;
-
-      gh = new GitHub({
-        username: githubCreds.user,
-        password: githubCreds.token,
-        auth: 'basic',
-      });
+      await this.updateCredentials();
     }
     return GitHubService.instance;
+  }
+
+  static async updateCredentials() {
+    const credService: CredentialsService = CredentialsService.getInstance();
+    const githubCreds: CredentialsModel = await credService.getGithubCredentials();
+    GitHubService.gitHubOrg = githubCreds.org;
+
+    gh = new GitHub({
+      username: githubCreds.user,
+      password: githubCreds.token,
+      auth: 'basic',
+    });
   }
 
   getCurrentStage(shipyardObj : any, stage : string) : string {
