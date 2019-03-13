@@ -49,7 +49,7 @@ export class CredentialsService {
       if (apiToken && apiToken.data !== undefined) {
         token = base64decode(apiToken.data['keptn-api-token']);
       } else {
-        console.log('[github-service] The secret does not contain the proper information.');
+        console.log('[github-service]: The secret does not contain the proper information.');
       }
     }
 
@@ -70,7 +70,7 @@ export class CredentialsService {
         gitHubCredentials.user = base64decode(ghItem.data.user);
         gitHubCredentials.token = base64decode(ghItem.data.token);
       } else {
-        console.log('[github-service] The secret does not contain the proper information.');
+        console.log('[github-service]: The secret does not contain the proper information.');
       }
     }
 
