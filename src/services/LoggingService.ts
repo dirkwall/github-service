@@ -19,13 +19,14 @@ export class LoggingService {
       } else {
         serverUrl = 'ws://control-websocket.keptn.35.222.202.204.xip.io';
       }
+      console.log('[github-service]: Start to connect to websocket')
       this.webSocket = new WebSocket(serverUrl, {
         headers: {
           token: webSocketChannelInfo.token,
         },
       });
       this.webSocket.on('open', () => {
-        console.log('connected');
+        console.log('[github-service]: Connected to websocket');
         resolve();
       });
     });
