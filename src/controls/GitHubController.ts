@@ -57,7 +57,10 @@ export class GitHubController implements interfaces.Controller {
     console.log(JSON.stringify(request.body));
     const wsLogger = new LoggingService();
     if (request.body.data.channelInfo !== undefined) {
+      console.log("Prop found")
       await wsLogger.connect(request.body.data.channelInfo);
+    } else {
+      console.log("Prop not found")
     }
     
     if (request.body.eventType == 'create.project') {

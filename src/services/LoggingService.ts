@@ -17,7 +17,7 @@ export class LoggingService {
       if (process.env.NODE_ENV === 'production') {
         serverUrl = 'ws://control.keptn.svc.cluster.local';
       } else {
-        serverUrl = 'ws://control-websocket.keptn.35.222.202.204.xip.io';
+        serverUrl = 'ws://control.keptn.35.222.202.204.xip.io';
       }
       console.log('[github-service]: Start to connect to websocket')
       this.webSocket = new WebSocket(serverUrl, {
