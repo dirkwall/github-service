@@ -54,13 +54,11 @@ export class GitHubController implements interfaces.Controller {
     response: express.Response,
     next: express.NextFunction,
   ): Promise<void> {
-    console.log(JSON.stringify(request.body));
-    const wsLogger = new LoggingService();
-    console.log("before wait")
+    // Wait for CLI to connect to Websocket
     const delay = (duration) => new Promise(resolve => setTimeout(resolve, duration));
     await delay(5000);
-    console.log("after wait")
     
+    const wsLogger = new LoggingService();
     if (request.body.data.channelInfo !== undefined) {
       console.log("Prop found")
       await wsLogger.connect(request.body.data.channelInfo);
