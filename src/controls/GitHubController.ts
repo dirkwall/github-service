@@ -74,38 +74,38 @@ export class GitHubController implements interfaces.Controller {
       console.log(endMsg);
       wsLogger.logMessage(endMsg, true);
 
-    } else if (request.body.eventType == 'onboard.service') {
+    // } else if (request.body.eventType == 'onboard.service') {
 
-      console.log('[github-service]: Start service onboarding.');
+    //   console.log('[github-service]: Start service onboarding.');
 
-      const cloudEvent : CloudEvent = request.body;
-      const gitHubSvc : GitHubService = await GitHubService.getInstance();
-      await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
+    //   const cloudEvent : CloudEvent = request.body;
+    //   const gitHubSvc : GitHubService = await GitHubService.getInstance();
+    //   await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
-      console.log('[github-service]: Service onboarded.');
+    //   console.log('[github-service]: Service onboarded.');
 
-    } else if (request.body.eventType == 'configure') {
+    // } else if (request.body.eventType == 'configure') {
 
-      console.log('[github-service]: Start secret creation.');
+    //   console.log('[github-service]: Start secret creation.');
 
-      const cloudEvent : CloudEvent = request.body;
-      const credSvc: CredentialsService = CredentialsService.getInstance();
-      const updated: boolean = await credSvc.updateGithubConfig(cloudEvent.data);
+    //   const cloudEvent : CloudEvent = request.body;
+    //   const credSvc: CredentialsService = CredentialsService.getInstance();
+    //   const updated: boolean = await credSvc.updateGithubConfig(cloudEvent.data);
 
-      if (updated) {
-        await GitHubService.updateCredentials();
-      }
+    //   if (updated) {
+    //     await GitHubService.updateCredentials();
+    //   }
 
-    } else if (request.body.type == 'sh.keptn.events.new-artefact') {
+    // } else if (request.body.type == 'sh.keptn.events.new-artefact') {
 
-      console.log('[github-service]: Change configuration.');
+    //   console.log('[github-service]: Change configuration.');
 
-      const cloudEvent : CloudEvent = request.body;
-      const gitHubSvc : GitHubService = await GitHubService.getInstance();
-      const updated: boolean = await gitHubSvc.updateConfiguration(
-        GitHubService.gitHubOrg, cloudEvent.data);
+    //   const cloudEvent : CloudEvent = request.body;
+    //   const gitHubSvc : GitHubService = await GitHubService.getInstance();
+    //   const updated: boolean = await gitHubSvc.updateConfiguration(
+    //     GitHubService.gitHubOrg, cloudEvent.data);
 
-      console.log('[github-service]: Configuration changed.');
+    //   console.log('[github-service]: Configuration changed.');
 
     } else {
       console.log(`[github-service]: This service does not handle the event type ${request.body.eventType}.`);
