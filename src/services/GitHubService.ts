@@ -239,16 +239,15 @@ export class GitHubService {
         if (e.response.statusText === 'Not Found') {
           const logMsg = `[github-service] Could not find organziation ${orgName}.`;
           console.log(logMsg);
-          wsLogger.logMessage(logMsg, false);
+          wsLogger.logMessage(logMsg, true);
         } else if (e.response.statusText === 'Unprocessable Entity') {
           const logMsg = `[github-service] Repository ${shipyard.project} already available.`
           console.log(logMsg);
-          wsLogger.logMessage(logMsg, false);
+          wsLogger.logMessage(logMsg, true);
         }
       }
       const logMsg = `Error: ${e.message}`
       console.log(logMsg);
-      wsLogger.logMessage(logMsg, true);
       return false;
     }
     return true;
@@ -292,7 +291,7 @@ export class GitHubService {
     } catch (e) {
       const logMsg = '[github-service] Initial commit failed.';
       console.log(logMsg);
-      wsLogger.logMessage(logMsg, true);
+      wsLogger.logMessage(logMsg, false);
       console.log(e.message);
     }
   }
@@ -341,7 +340,7 @@ export class GitHubService {
     } catch (e) {
       const logMsg = '[github-service] Creating branches failed.';
       console.log(logMsg);
-      wsLogger.logMessage(logMsg, true);
+      wsLogger.logMessage(logMsg, false);
       console.log(e.message);
     }
   }
@@ -358,7 +357,7 @@ export class GitHubService {
     } catch (e) {
       const logMsg = '[github-service] Adding shipyard to master failed.'
       console.log(logMsg);
-      wsLogger.logMessage(logMsg, true);
+      wsLogger.logMessage(logMsg, false);
       console.log(e.message);
     }
   }
