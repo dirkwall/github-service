@@ -82,10 +82,10 @@ export class CredentialsService {
     if (secret !== undefined) {
       try {
         const deleteResult = await this.k8sClient.api.v1
-          .namespaces('keptn').secrets
-          .get({ name: 'github-credentials', pretty: true, exact: true, export: true }).delete();
+          .namespaces('keptn').secrets('github-credentials').delete();
       } catch (e) {
         console.log('[github-service]: Can not delete credentials.');
+        console.log(e.message);
       }
 
       createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secrets.post({ body: secret });
