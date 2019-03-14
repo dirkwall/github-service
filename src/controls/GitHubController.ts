@@ -32,7 +32,7 @@ import { LoggingService } from '../services/LoggingService';
 export class GitHubController implements interfaces.Controller {
 
   constructor() { }
-
+  
   @ApiOperationPost({
     description: 'Handle channel events',
     parameters: {
@@ -56,6 +56,8 @@ export class GitHubController implements interfaces.Controller {
   ): Promise<void> {
     console.log(JSON.stringify(request.body));
     const wsLogger = new LoggingService();
+    const delay = (duration) => new Promise(resolve => setTimeout(resolve, duration));
+    await delay(5000);
     if (request.body.data.channelInfo !== undefined) {
       console.log("Prop found")
       await wsLogger.connect(request.body.data.channelInfo);
