@@ -563,7 +563,7 @@ export class GitHubService {
 
   async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
     const serviceRegex = new RegExp(serviceName, 'g');
-    const nameRegex = new RegExp(`name: {{ .Chart.Name }}-${decamelizedServiceName}`, 'g');
+    const nameRegex = new RegExp(`name: ${decamelizedServiceName}`, 'g');
     const dplyRegex = new RegExp(`deployment: ${decamelizedServiceName}`, 'g');
     const valuesRegex = new RegExp(`.Values.${serviceName}`, 'g');
 
