@@ -1,16 +1,16 @@
 import { CredentialsModel } from '../types/CredentialsModel';
 import { CredentialsSecret } from '../types/CredentialsSecret';
 
-import { base64encode } from 'nodejs-base64';
+import base64url from "base64url";
 
 export class KeptnConfigSecretFactory {
 
   constructor() { }
 
   createKeptnConfigSecret(creds: CredentialsModel): CredentialsSecret {
-    creds.token = base64encode(creds.token);
-    creds.user = base64encode(creds.user);
-    creds.org = base64encode(creds.org);
+    creds.token = base64url(creds.token);
+    creds.user = base64url(creds.user);
+    creds.org = base64url(creds.org);
 
     const secret = {
       apiVersion: 'v1',
