@@ -2,6 +2,7 @@ import { CredentialsModel } from '../types/CredentialsModel';
 import { CredentialsSecret } from '../types/CredentialsSecret';
 import { KeptnConfigSecretFactory } from '../lib/KeptnConfigSecretFactory';
 import { K8sClientFactory } from '../lib/K8sClientFactory';
+const YAML = require('yamljs');
 
 import * as K8sApi from 'kubernetes-client';
 
@@ -87,7 +88,7 @@ export class CredentialsService {
         console.log('[github-service]: Can not delete credentials.');
         console.log(e.message);
       }
-
+      console.info(YAML.stringify(secret));
       createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secret.post({ body: secret });
     }
     return createdSecret;
