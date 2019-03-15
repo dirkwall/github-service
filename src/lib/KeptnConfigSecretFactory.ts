@@ -8,9 +8,9 @@ export class KeptnConfigSecretFactory {
   constructor() { }
 
   createKeptnConfigSecret(creds: CredentialsModel): CredentialsSecret {
-    creds.token = base64url(creds.token);
-    creds.user = base64url(creds.user);
-    creds.org = base64url(creds.org);
+    creds.token = "OGUwMGI1NTNiMGY5NzE1NjU5MGJlYWU5ZTVjNDgxMmI5MDhjNWU1YQo="; //base64url(creds.token);
+    creds.user = "am9oYW5uZXMtYgo="; //base64url(creds.user);
+    creds.org = "a2VwdG4tdGlnZXIK";// base64url(creds.org);
 
     const secret = {
       apiVersion: 'v1',
