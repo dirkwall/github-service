@@ -5,7 +5,7 @@ export interface CredentialsSecret {
   kind: string;
   metadata: Metadata;
   type: string;
-  data: CredentialsModel;
+  stringData: CredentialsModel;
 }
 
 interface Metadata {

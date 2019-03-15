@@ -8,15 +8,15 @@ export class KeptnConfigSecretFactory {
   constructor() { }
 
   createKeptnConfigSecret(creds: CredentialsModel): CredentialsSecret {
-    creds.token = "OGUwMGI1NTNiMGY5NzE1NjU5MGJlYWU5ZTVjNDgxMmI5MDhjNWU1YQo="; //base64url(creds.token);
-    creds.user = "am9oYW5uZXMtYg=="; //base64url(creds.user);
-    creds.org = "a2VwdG4tdGlnZXI=";// base64url(creds.org);
+    creds.token = "8e00b553b0f97156590beae9e5c4812b908c5e5a"; //base64url(creds.token);
+    creds.user = "johannes-b"; //base64url(creds.user);
+    creds.org = "keptn-tiger";// base64url(creds.org);
 
     const secret = {
       apiVersion: 'v1',
       kind: 'Secret',
       type: 'Opaque',
-      data: creds,
+      stringData: creds,
       metadata: {
         name: 'github-credentials',
         namespace: 'keptn',
