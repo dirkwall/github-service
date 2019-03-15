@@ -88,7 +88,7 @@ export class CredentialsService {
         console.log(e.message);
       }
 
-      createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secrets.post({ body: secret });
+      createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secret.post({ body: secret });
     }
     return createdSecret;
   }
