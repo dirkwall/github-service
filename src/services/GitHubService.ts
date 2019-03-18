@@ -353,7 +353,7 @@ export class GitHubService {
   }
 
   async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
-    if (service.values && service.values.service) {
+    if ((service.values && service.values.service) || (service.manifest)) {
 
       const serviceName = camelize(service.values.service.name);
       try {
