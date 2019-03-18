@@ -494,6 +494,10 @@ export class GitHubService {
         `[keptn]: Added manifest for ${serviceName}.`,
         { encode: true });
 
+      if (stage.deployment_strategy === 'blue_green_service') {
+        // TODO: handle blue green deployments.
+      }
+
     } else {
       console.log('[github-service] For onboarding a service, a values or manifest object must be available in the data block.');
     }
