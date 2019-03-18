@@ -12,7 +12,7 @@ export class KeptnConfigSecretFactory {
     secretInput.token = base64encode(creds.token);
     secretInput.user = base64encode(creds.user);
     secretInput.org = base64encode(creds.org);
-    
+
     const secret = {
       apiVersion: 'v1',
       kind: 'Secret',

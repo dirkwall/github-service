@@ -62,8 +62,6 @@ export class GitHubController implements interfaces.Controller {
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
 
-      console.log('[github-service]: Project created.');
-
     } else if (request.body.eventType == 'onboard.service') {
 
       console.log('[github-service]: Start service onboarding.');
@@ -71,8 +69,6 @@ export class GitHubController implements interfaces.Controller {
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
-
-      console.log('[github-service]: Service onboarded.');
 
     } else if (request.body.eventType == 'configure') {
 
@@ -94,8 +90,6 @@ export class GitHubController implements interfaces.Controller {
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       const updated: boolean = await gitHubSvc.updateConfiguration(
         GitHubService.gitHubOrg, cloudEvent.data);
-
-      console.log('[github-service]: Configuration changed.');
 
     } else {
       console.log(`[github-service]: This service does not handle the event type ${request.body.eventType}.`);

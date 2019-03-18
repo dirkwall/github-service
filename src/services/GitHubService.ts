@@ -14,7 +14,7 @@ import { v4 as uuid } from 'uuid';
 import axios  from 'axios';
 
 const decamelize = require('decamelize');
-const camelize = require('camelize')
+const camelize = require('camelize');
 const GitHub = require('github-api');
 const Mustache = require('mustache');
 const YAML = require('yamljs');
@@ -162,6 +162,8 @@ export class GitHubService {
                   shipyardObj.stages[j].deployment_strategy);
 
                 if (updated) {
+                  console.log('[github-service]: Configuration changed.');
+
                   console.log('[github-service]: Send configuration changed event.');
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
                   console.log('[github-service]: Configuration changed event sent.');
@@ -192,6 +194,7 @@ export class GitHubService {
       await this.initialCommit(repo, shipyard);
       await this.createBranchesForEachStages(repo, shipyard);
       await this.addShipyardToMaster(repo, shipyard);
+      console.log('[github-service]: Project created.');
       // TODO: WEBHOOK - await this.setHook(repo, shipyard);
     }
     return created;
@@ -376,6 +379,7 @@ export class GitHubService {
           } else {
             console.log(`[github-service] Adding artifacts to: ${stage.name}.`);
             await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
+            console.log(`[github-service]: Service onboarded to: ${stage.name}. `);
           }
         }));
         // TODO: WEBHOOK - this.updateWebHook(true, orgName, service.project);
@@ -390,6 +394,7 @@ export class GitHubService {
   }
 
   private async addArtifactsToBranch(repo: any, orgName: string, service : ServiceModel, stage: Stage, valuesObj: any, chartName: string) {
+
     if (service.values) {
       // update values file
       const serviceName = camelize(service.values.service.name);
@@ -479,9 +484,17 @@ export class GitHubService {
           }
         }
       }
-    } /*else if (cloudEvent.data.manifest) {
-      await repo.writeFile(stage.name, `${serviceName}.yaml`, YAML.stringify(cloudEvent.data.manifest, 100), `[keptn]: Added manifest for ${serviceName}`, { encode: true });
-    }*/ else {
+    } else if (service.manifest) {
+      const serviceName = camelize(service.manifest.application.name);
+
+      await repo.writeFile(
+        stage.name,
+        `${serviceName}_manifest.yml`,
+        YAML.stringify(service.manifest, 100),
+        `[keptn]: Added manifest for ${serviceName}.`,
+        { encode: true });
+
+    } else {
       console.log('[github-service] For onboarding a service, a values or manifest object must be available in the data block.');
     }
   }
