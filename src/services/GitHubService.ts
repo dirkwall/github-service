@@ -354,8 +354,18 @@ export class GitHubService {
 
   async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
     if ((service.values && service.values.service) || (service.manifest)) {
+      let serviceName : string = undefined;
 
-      const serviceName = camelize(service.values.service.name);
+      if ((service.values && service.values.service)) {
+        serviceName = camelize(service.values.service.name);
+      } else if (service.manifest) {
+        serviceName = camelize(service.manifest.applications[0].name);
+      } else {
+        console.log(`[github-service] Manifest type not implemented.`);
+      }
+
+      console.log(`${serviceName}`);
+
       try {
         const repo = await gh.getRepo(orgName, service.project);
         //TODO: WEBHOOK - await this.updateWebHook(false, orgName, service.project);
