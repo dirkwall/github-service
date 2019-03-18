@@ -7,13 +7,6 @@ This service is designed to interact with GitHub for various keptn tasks:
 
 ## Install service <a id="install"></a>
 
-1. Go to `~/github-service`.
-
-    ```console
-    $ pwd
-    ~/github-service
-    ```
-
 1. To install the service, run the `deploy.sh` script as shown below: 
 
     ```console
@@ -40,7 +33,7 @@ This service is designed to interact with GitHub for various keptn tasks:
 
 ## Uninstall service <a id="install"></a>
 
-1. To uninstall the service, run the following commands:
+1. To uninstall the service, run the following command:
 
     ```console
     $ kubectl delete -f ./config/gen/service.yml
