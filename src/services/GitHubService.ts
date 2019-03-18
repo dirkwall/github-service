@@ -359,7 +359,7 @@ export class GitHubService {
       if ((service.values && service.values.service)) {
         serviceName = camelize(service.values.service.name);
       } else if (service.manifest) {
-        serviceName = camelize(service.manifest.applications[0].name);
+        serviceName = service.manifest.applications[0].name;
       } else {
         console.log(`[github-service] Manifest type not implemented.`);
       }
@@ -493,7 +493,7 @@ export class GitHubService {
         }
       }
     } else if (service.manifest) {
-      const serviceName = camelize(service.manifest.applications[0].name);
+      const serviceName = service.manifest.applications[0].name;
 
       console.log(`${serviceName}`);
 
