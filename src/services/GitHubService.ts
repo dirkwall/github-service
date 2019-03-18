@@ -364,8 +364,6 @@ export class GitHubService {
         console.log(`[github-service] Manifest type not implemented.`);
       }
 
-      console.log(`${serviceName}`);
-
       try {
         const repo = await gh.getRepo(orgName, service.project);
         //TODO: WEBHOOK - await this.updateWebHook(false, orgName, service.project);
@@ -495,7 +493,9 @@ export class GitHubService {
         }
       }
     } else if (service.manifest) {
-      const serviceName = camelize(service.manifest.application.name);
+      const serviceName = camelize(service.manifest.applications[0].name);
+
+      console.log(`${serviceName}`);
 
       await repo.writeFile(
         stage.name,
