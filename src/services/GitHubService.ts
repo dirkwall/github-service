@@ -319,8 +319,7 @@ export class GitHubService {
         if (stage.deployment_strategy === 'blue_green_service') {
           // add istio gateway to stage
           let gatewaySpec = await utils.readFileContent(GitHubService.gatewayTplFile);
-          gatewaySpec = Mustache.render(
-            gatewaySpec,
+          gatewaySpec = Mustache.render(gatewaySpec,
             { application: shipyard.project, stage: stage.name });
 
           await repo.writeFile(
@@ -471,8 +470,8 @@ export class GitHubService {
 
             if (template.path.indexOf('-service.yaml') > 0) {
               await this.createIstioEntry(
-                orgName,
                 repo,
+                service.project,
                 decamelizedserviceName,
                 serviceName,
                 stage.name,
@@ -556,7 +555,7 @@ export class GitHubService {
     }
   }
 
-  async createIstioEntry(orgName: string, repo: any, serviceKey : string, serviceName : string, branch: string, chartName: string, istioIngressGatewayService: any) {
+  async createIstioEntry(repo: any, project: string, serviceKey : string, serviceName : string, branch: string, chartName: string, istioIngressGatewayService: any) {
     // create destination rule
     let destinationRuleTpl = await utils.readFileContent(GitHubService.destinationRuleTplFile);
     destinationRuleTpl = Mustache.render(destinationRuleTpl, {
@@ -574,7 +573,7 @@ export class GitHubService {
     // create istio virtual service
     let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFile);
     virtualServiceTpl = Mustache.render(virtualServiceTpl, {
-      gitHubOrg: orgName,
+      application: project,
       serviceName: serviceKey,
       chartName,
       environment: branch,

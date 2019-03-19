@@ -1,12 +1,12 @@
 apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
-  name: {{ gitHubOrg }}-{{ serviceName }}-{{ environment }}
+  name: {{ application }}-{{ environment }}-{{ serviceName }}
 spec:
   hosts:
   - "{{ serviceName }}.{{ environment }}.{{ ingressGatewayIP }}.xip.io"
   gateways:
-  - {{ gitHubOrg }}-gateway
+  - {{ application }}-{{ environment }}-gateway
   http:
     - route:
       - destination:
