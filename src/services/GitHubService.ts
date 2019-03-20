@@ -93,6 +93,7 @@ export class GitHubService {
         YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
         `[keptn-config-change]:${serviceName}:${config.image}`,
         { encode: true });
+
       if (result.statusText === 'OK') {
         updated = true;
       }
@@ -137,17 +138,10 @@ export class GitHubService {
     return prevBlueVersion;
   }
 
-  logMessage(keptnContext: string, message: string) {
-    console.log(JSON.stringify({ 
-      keptnContext: keptnContext,
-      keptnService: 'github-service',
-      message: message,
-    }));
-  }
-
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
     let updated: boolean = false;
     try {
+      utils.logMessage(config.keptnContext, 'Change configuration.');
       if (config.project) {
         const repo = await gh.getRepo(orgName, config.project);
 
@@ -163,7 +157,7 @@ export class GitHubService {
 
           // service not availalbe in values file
           if (valuesObj[camelize(config.service)] === undefined) {
-            this.logMessage(config.keptnContext, ' Service not available.');
+            utils.logMessage(config.keptnContext, ' Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
               const newConfig : ConfigurationModel = config;
@@ -185,25 +179,25 @@ export class GitHubService {
                   shipyardObj.stages[j].deployment_strategy);
 
                 if (updated) {
-                  this.logMessage(config.keptnContext, 'Configuration changed.');
-                  this.logMessage(config.keptnContext, 'Send configuration changed event.');
+                  utils.logMessage(config.keptnContext, 'Configuration changed.');
+                  utils.logMessage(config.keptnContext, 'Send configuration changed event.');
 
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
                   
-                  this.logMessage(config.keptnContext, 'Configuration changed event sent.');
+                  utils.logMessage(config.keptnContext, 'Configuration changed event sent.');
                 }
               }
             }
           }
         } else {
-          this.logMessage(config.keptnContext, 'Tag of image not defined.');
+          utils.logMessage(config.keptnContext, 'Tag of image not defined.');
         }
       } else {
-        this.logMessage(config.keptnContext, 'Project not defined.');
+        utils.logMessage(config.keptnContext, 'Project not defined.');
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        this.logMessage(config.keptnContext, 'Could not find shipyard file.');
+        utils.logMessage(config.keptnContext, 'Could not find shipyard file.');
         console.log(e.message);
       } else {
         console.log(e.message);
@@ -233,16 +227,44 @@ export class GitHubService {
       deleted = await repo.deleteRepo();
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[keptn] Could not find repository ${shipyard.project}.`);
+        console.log(`[github-service] Could not find repository ${shipyard.project}.`);
         console.log(e.message);
       }
     }
     return deleted;
   }
 
+  private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
+    try {
+      const istioIngressGatewayService = await utils.getK8sServiceUrl(
+        'istio-ingressgateway', 'istio-system');
+
+      const eventBrokerUri = `event-broker-ext.keptn.` +
+        `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
+
+      const credService: CredentialsService = CredentialsService.getInstance();
+
+      await repo.createHook({
+        name: 'web',
+        events: ['push'],
+        config: {
+          url: `https://${eventBrokerUri}/github`,
+          content_type: 'json',
+          secret: await credService.getKeptnApiToken(),
+          insecure_ssl: 1,
+        },
+      });
+      console.log(`[github-service] Webhook http://${eventBrokerUri}/github activated.`);
+
+    } catch (e) {
+      console.log('[github-service] Setting webhook failed.');
+      console.log(e.message);
+    }
+  }
+
   private async updateWebHook(
     active: boolean, orgName: string, project: string) : Promise<void> {
-    console.log(`Setting WebHook for ${orgName}-${project} to ${active}`);
+
     const repo = await gh.getRepo(orgName, project);
     const hooks = await repo.listHooks();
     const hook = hooks.data.find((item) => {
@@ -273,34 +295,6 @@ export class GitHubService {
       return false;
     }
     return true;
-  }
-
-  private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
-    try {
-      const istioIngressGatewayService = await utils.getK8sServiceUrl(
-        'istio-ingressgateway', 'istio-system');
-
-      const eventBrokerUri = `event-broker-ext.keptn.` +
-        `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
-
-      const credService: CredentialsService = CredentialsService.getInstance();
-
-      await repo.createHook({
-        name: 'web',
-        events: ['push'],
-        config: {
-          url: `https://${eventBrokerUri}/github`,
-          content_type: 'json',
-          secret: await credService.getKeptnApiToken(),
-          insecure_ssl: 1,
-        },
-      });
-      console.log(`[github-service] Webhook http://${eventBrokerUri}/github activated.`);
-
-    } catch (e) {
-      console.log('[github-service] Setting webhook failed.');
-      console.log(e.message);
-    }
   }
 
   private async initialCommit(repo : any, shipyard : ShipyardModel) : Promise<any> {

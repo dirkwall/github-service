@@ -8,6 +8,14 @@ class Utils {
     return String(fs.readFileSync(filePath));
   }
 
+  logMessage(keptnContext: string, message: string) {
+    console.log(JSON.stringify({ 
+      keptnContext: keptnContext,
+      keptnService: 'github-service',
+      message: message,
+    }));
+  }
+
   async getK8sServiceUrl(serviceName, namespace): Promise<K8sServiceInfo> {
     const k8sClient = new K8sClientFactory().createK8sClient();
     const service =

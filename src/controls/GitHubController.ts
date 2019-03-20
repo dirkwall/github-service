@@ -22,6 +22,11 @@ import { CredentialsService } from '../services/CredentialsService';
 import { CloudEvent } from 'cloudevent';
 import { ConfigurationModel } from 'ConfigurationModel';
 
+import { Utils } from '../lib/Utils';
+
+// Util class
+const utils = new Utils();
+
 @ApiPath({
   name: 'GitHub',
   path: '/',
@@ -83,16 +88,15 @@ export class GitHubController implements interfaces.Controller {
       }
 
     } else if (request.body.type == 'sh.keptn.events.new-artefact') {
-
-      console.log('[github-service]: Change configuration.');
-
+      
       const cloudEvent : CloudEvent = request.body;
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
-      const updated: boolean = await gitHubSvc.updateConfiguration(
-        GitHubService.gitHubOrg, cloudEvent.data);
+      await gitHubSvc.updateConfiguration(GitHubService.gitHubOrg, cloudEvent.data);
 
     } else {
-      console.log(`[github-service]: This service does not handle the event type ${request.body.eventType}.`);
+      if (request.body.data.keptnContext ) {
+        utils.logMessage(request.body.data.keptnContext, `This service does not handle the event type ${request.body.eventType}.`);
+      }
     }
 
     const result = {
