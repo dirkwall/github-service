@@ -116,28 +116,6 @@ export class GitHubService {
     return updated;
   }
 
-  async sendConfigChangedEvent(orgName : string, config : ConfigurationModel) : Promise<boolean> {
-    let sent : boolean = false;
-
-    config.githuborg = orgName;
-
-    const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
-    keptnEvent.data = config;
-    keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
-    await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
-
-    return sent;
-  }
-
-  getPreviousBlueVersion(valuesObj : any, config : ConfigurationModel) : string {
-    const serviceName = camelize(config.service);
-    let prevBlueVersion : string = valuesObj[`${serviceName}Blue`].image.tag;
-    if (prevBlueVersion === undefined || prevBlueVersion === null) {
-      prevBlueVersion = config.tag;
-    }
-    return prevBlueVersion;
-  }
-
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
     let updated: boolean = false;
     try {
@@ -164,6 +142,7 @@ export class GitHubService {
 
               if (shipyardObj.stages[j].name === config.stage) {
 
+                newConfig.githuborg = orgName;
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
 
@@ -204,6 +183,26 @@ export class GitHubService {
       }
     }
     return updated;
+  }
+
+  async sendConfigChangedEvent(orgName : string, config : ConfigurationModel) : Promise<boolean> {
+    let sent : boolean = false;
+
+    const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
+    keptnEvent.data = config;
+    keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
+    await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
+
+    return sent;
+  }
+
+  getPreviousBlueVersion(valuesObj : any, config : ConfigurationModel) : string {
+    const serviceName = camelize(config.service);
+    let prevBlueVersion : string = valuesObj[`${serviceName}Blue`].image.tag;
+    if (prevBlueVersion === undefined || prevBlueVersion === null) {
+      prevBlueVersion = config.tag;
+    }
+    return prevBlueVersion;
   }
 
   async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
