@@ -87,12 +87,9 @@ export class GitHubController implements interfaces.Controller {
       console.log('[github-service]: Change configuration.');
 
       const cloudEvent : CloudEvent = request.body;
-      console.log(cloudEvent);
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
-      const config : ConfigurationModel = cloudEvent.data;
-      console.log(config);
       const updated: boolean = await gitHubSvc.updateConfiguration(
-        GitHubService.gitHubOrg, config);
+        GitHubService.gitHubOrg, cloudEvent.data);
 
     } else {
       console.log(`[github-service]: This service does not handle the event type ${request.body.eventType}.`);
