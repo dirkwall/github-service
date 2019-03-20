@@ -169,13 +169,13 @@ export class GitHubService {
               const newConfig : ConfigurationModel = config;
               console.log(`${shipyardObj.stages[j].name} --> ${config.stage}`);
               if (shipyardObj.stages[j].name === config.stage) {
-
+                console.log('in 1');
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
-
+                console.log('in 2');
                 const prevBlueVersion = this.getPreviousBlueVersion(valuesObj, config);
                 newConfig.prevblueversion = prevBlueVersion;
-
+                console.log('in 3');
                 updated = await this.updateValuesFile(
                   repo,
                   valuesObj,
