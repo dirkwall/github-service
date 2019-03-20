@@ -150,7 +150,10 @@ export class GitHubService {
         const shipyardObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
+
         console.log(config.stage);
+        console.log(config.tag);
+        
         if (config.stage && config.tag) {
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
