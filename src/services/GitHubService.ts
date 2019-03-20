@@ -148,7 +148,7 @@ export class GitHubService {
 
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
-        if (config.stage && config.tag) {
+        if (config.stage && config.tag && !config.tag.includes('stable')) {
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
