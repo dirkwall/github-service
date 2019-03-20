@@ -169,7 +169,7 @@ export class GitHubService {
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
 
                 const prevBlueVersion = this.getPreviousBlueVersion(valuesObj, config);
-                newConfig.prevBlueVersion = prevBlueVersion;
+                newConfig.prevblueversion = prevBlueVersion;
 
                 updated = await this.updateValuesFile(
                   repo,
