@@ -99,14 +99,15 @@ export class GitHubService {
     } else if (deploymentStrategy === 'blue_green_service') {
       valuesObj[`${serviceName}Blue`].image.repository = repository;
       valuesObj[`${serviceName}Green`].image.repository = repository;
+
       valuesObj[`${serviceName}Blue`].image.tag = tag;
-      valuesObj[`${serviceName}Green`].image.tag = tag;
 
       const result = await repo.writeFile(
         config.stage, 'helm-chart/values.yaml',
         YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
         `[keptn-config-change]:${serviceName}:${config.image}`,
         { encode: true });
+
       if (result.statusText === 'OK') {
         updated = true;
       }
@@ -125,6 +126,17 @@ export class GitHubService {
     await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
 
     return sent;
+  }
+
+  getPreviousBlueVersion(valuesObj : any, config : ConfigurationModel) : string {
+    const serviceName = camelize(config.service);
+
+    let prevBlueVersion = valuesObj[`${serviceName}Blue`].image.tag;
+    if (prevBlueVersion === undefined || prevBlueVersion === null) {
+      prevBlueVersion = config.tag;
+    }
+
+    return prevBlueVersion;
   }
 
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
@@ -155,6 +167,10 @@ export class GitHubService {
 
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
+
+                const prevBlueVersion = this.getPreviousBlueVersion(valuesObj, config);
+                newConfig.prevBlueVersion = prevBlueVersion;
+
                 updated = await this.updateValuesFile(
                   repo,
                   valuesObj,
@@ -426,7 +442,7 @@ export class GitHubService {
         bgValues[`${serviceName}Blue`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
         bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
 
-        bgValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
+        bgValues[`${serviceName}Green`].image.tag = `${stage.name}-stable`;
 
         if (bgValues[`${serviceName}Blue`].service) {
           bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
