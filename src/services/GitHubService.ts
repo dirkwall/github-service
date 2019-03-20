@@ -131,10 +131,13 @@ export class GitHubService {
   getPreviousBlueVersion(valuesObj : any, config : ConfigurationModel) : string {
     const serviceName = camelize(config.service);
     console.log("in function");
-    let prevBlueVersion = valuesObj[`${serviceName}Blue`].image.tag;
+    let prevBlueVersion : string = valuesObj[`${serviceName}Blue`].image.tag;
+    console.log("-->1");
     if (prevBlueVersion === undefined || prevBlueVersion === null) {
+      console.log("-->2");
       prevBlueVersion = config.tag;
     }
+    console.log("-->3");
     console.log(prevBlueVersion);
     return prevBlueVersion;
   }
