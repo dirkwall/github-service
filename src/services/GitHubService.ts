@@ -61,9 +61,9 @@ export class GitHubService {
   }
 
   getCurrentStage(shipyardObj : any, stage : string) : string {
-    let currentStage = undefined;
+    let currentStage : string = undefined;
 
-    if (stage === undefined || stage === '') {
+    if (stage === undefined || stage === '' || stage === null) {
       currentStage = shipyardObj.stages[0].name;
     } else {
       for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
@@ -150,7 +150,7 @@ export class GitHubService {
         const shipyardObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
-
+        console.log(config.stage);
         if (config.stage && config.tag) {
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
