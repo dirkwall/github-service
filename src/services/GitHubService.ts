@@ -130,24 +130,16 @@ export class GitHubService {
 
   getPreviousBlueVersion(valuesObj : any, config : ConfigurationModel) : string {
     const serviceName = camelize(config.service);
-    console.log("in function");
     let prevBlueVersion : string = valuesObj[`${serviceName}Blue`].image.tag;
-    console.log("-->1");
     if (prevBlueVersion === undefined || prevBlueVersion === null) {
-      console.log("-->2");
       prevBlueVersion = config.tag;
     }
-    console.log("-->3");
-    console.log(prevBlueVersion);
     return prevBlueVersion;
   }
 
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
     let updated: boolean = false;
     try {
-
-      console.log(config.tag);
-
       if (config.project) {
         const repo = await gh.getRepo(orgName, config.project);
 
@@ -155,9 +147,6 @@ export class GitHubService {
         const shipyardObj = YAML.parse(base64decode(shipyardYaml.data.content));
 
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
-
-        console.log(config.stage);
-        console.log(config.tag);
 
         if (config.stage && config.tag) {
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
@@ -172,22 +161,21 @@ export class GitHubService {
               const newConfig : ConfigurationModel = config;
 
               if (shipyardObj.stages[j].name === config.stage) {
-                console.log(`${shipyardObj.stages[j].name} --> ${config.stage}`);
 
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
 
-                console.log("before fkt");
-                const prevBlueVersion = this.getPreviousBlueVersion(valuesObj, config);
-                newConfig.prevblueversion = prevBlueVersion;
-                console.log("after fkt");
+                if(newConfig.deploymentstrategy === 'blue_green_service') {
+                  const prevBlueVersion = this.getPreviousBlueVersion(valuesObj, config);
+                  newConfig.prevblueversion = prevBlueVersion;
+                }
 
                 updated = await this.updateValuesFile(
                   repo,
                   valuesObj,
                   config,
                   shipyardObj.stages[j].deployment_strategy);
-                console.log(updated);
+
                 if (updated) {
                   console.log('[github-service]: Configuration changed.');
 
@@ -207,6 +195,8 @@ export class GitHubService {
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
         console.log(`[github-service]: Could not find shipyard file.`);
+        console.log(e.message);
+      } else {
         console.log(e.message);
       }
     }
