@@ -137,6 +137,14 @@ export class GitHubService {
     return prevBlueVersion;
   }
 
+  logMessage(keptnContext: string, message: string) {
+    console.log(JSON.stringify({ 
+      keptnContext: keptnContext,
+      keptnService: 'github-service',
+      message: message,
+    }));
+  }
+
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
     let updated: boolean = false;
     try {
@@ -155,7 +163,7 @@ export class GitHubService {
 
           // service not availalbe in values file
           if (valuesObj[camelize(config.service)] === undefined) {
-            console.log('[github-service]: Service not available.');
+            this.logMessage(config.keptnContext, ' Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
               const newConfig : ConfigurationModel = config;
@@ -177,24 +185,25 @@ export class GitHubService {
                   shipyardObj.stages[j].deployment_strategy);
 
                 if (updated) {
-                  console.log('[github-service]: Configuration changed.');
+                  this.logMessage(config.keptnContext, 'Configuration changed.');
+                  this.logMessage(config.keptnContext, 'Send configuration changed event.');
 
-                  console.log('[github-service]: Send configuration changed event.');
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
-                  console.log('[github-service]: Configuration changed event sent.');
+                  
+                  this.logMessage(config.keptnContext, 'Configuration changed event sent.');
                 }
               }
             }
           }
         } else {
-          console.log(`[github-service]: Tag not defined.`);
+          this.logMessage(config.keptnContext, 'Tag of image not defined.');
         }
       } else {
-        console.log(`[github-service]: Project not defined.`);
+        this.logMessage(config.keptnContext, 'Project not defined.');
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[github-service]: Could not find shipyard file.`);
+        this.logMessage(config.keptnContext, 'Could not find shipyard file.');
         console.log(e.message);
       } else {
         console.log(e.message);
