@@ -167,7 +167,7 @@ export class GitHubService {
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
               const newConfig : ConfigurationModel = config;
-
+              console.log(`${shipyardObj.stages[j].name} --> ${config.stage}`);
               if (shipyardObj.stages[j].name === config.stage) {
 
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
@@ -181,7 +181,7 @@ export class GitHubService {
                   valuesObj,
                   config,
                   shipyardObj.stages[j].deployment_strategy);
-
+                console.log(updated);
                 if (updated) {
                   console.log('[github-service]: Configuration changed.');
 
