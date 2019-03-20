@@ -143,6 +143,8 @@ export class GitHubService {
     let updated: boolean = false;
     try {
 
+      console.log(config.tag);
+
       if (config.project) {
         const repo = await gh.getRepo(orgName, config.project);
 
@@ -153,7 +155,7 @@ export class GitHubService {
 
         console.log(config.stage);
         console.log(config.tag);
-        
+
         if (config.stage && config.tag) {
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
