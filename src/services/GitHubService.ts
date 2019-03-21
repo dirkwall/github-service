@@ -170,7 +170,7 @@ export class GitHubService {
                   utils.logMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
                   utils.logMessage(keptnContext, 'Send configuration changed event.');
 
-                  await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
+                  await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig, keptnContext);
 
                   utils.logMessage(keptnContext, 'Configuration changed event sent.');
                 }
@@ -194,10 +194,11 @@ export class GitHubService {
     return updated;
   }
 
-  async sendConfigChangedEvent(orgName: string, config: ConfigurationModel): Promise<boolean> {
+  async sendConfigChangedEvent(orgName: string, config: ConfigurationModel, keptnContext: string): Promise<boolean> {
     const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
     keptnEvent.data = config;
     keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
+    keptnEvent.shkeptncontext = keptnContext;
     await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
     return true;
   }

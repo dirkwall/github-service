@@ -18,6 +18,7 @@ export class KeptnRequestModel {
   public time: string;
   public datacontenttype: string;
   public data: any;
+  public shkeptncontext: string;
 
   constructor() {
     this.specversion = '0.2';
