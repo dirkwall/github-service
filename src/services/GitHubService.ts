@@ -119,8 +119,8 @@ export class GitHubService {
   async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
     let updated: boolean = false;
     try {
-      utils.logMessage(config.keptnContext, 'Change configuration.');
-      if (config.project) {
+      if (config.project && config.tag && !config.tag.includes('stable')) {
+        utils.logMessage(config.keptnContext, 'Change configuration.');
         const repo = await gh.getRepo(orgName, config.project);
 
         const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
@@ -128,7 +128,7 @@ export class GitHubService {
 
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
-        if (config.stage && config.tag && !config.tag.includes('stable')) {
+        if (config.stage) {
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
@@ -146,7 +146,7 @@ export class GitHubService {
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
 
-                if(newConfig.deploymentstrategy === 'blue_green_service') {
+                if (newConfig.deploymentstrategy === 'blue_green_service') {
                   const prevBlueVersion = this.getPreviousBlueVersion(valuesObj, config);
                   newConfig.prevblueversion = prevBlueVersion;
                 }
@@ -169,7 +169,7 @@ export class GitHubService {
             }
           }
         } else {
-          utils.logMessage(config.keptnContext, 'Tag of image not defined.');
+          utils.logMessage(config.keptnContext, 'No stage to apply changes to.');
         }
       } else {
         utils.logMessage(config.keptnContext, 'Project not defined.');
