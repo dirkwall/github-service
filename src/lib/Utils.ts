@@ -12,6 +12,7 @@ class Utils {
     console.log(JSON.stringify({ 
       keptnContext: keptnContext,
       keptnService: 'github-service',
+      logLevel: 'INFO',
       message: message,
     }));
   }
