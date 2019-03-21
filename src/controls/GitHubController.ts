@@ -88,8 +88,9 @@ export class GitHubController implements interfaces.Controller {
       }
 
     } else if (request.body.type == 'sh.keptn.events.new-artefact') {
-      
+
       const cloudEvent : CloudEvent = request.body;
+      console.log(cloudEvent);
       const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.updateConfiguration(GitHubService.gitHubOrg, cloudEvent.data);
 
