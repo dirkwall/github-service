@@ -4,6 +4,7 @@ import { ServiceModel } from '../types/ServiceModel';
 import { Stage, ShipyardModel } from '../types/ShipyardModel';
 import { CredentialsModel } from '../types/CredentialsModel';
 import { ConfigurationModel } from '../types/ConfigurationModel';
+import { CloudEvent } from '../types/CloudEvent';
 import { KeptnRequestModel } from '../types/KeptnRequestModel';
 import { TreeModel , TreeItem } from '../types/TreeModel';
 
@@ -116,11 +117,15 @@ export class GitHubService {
     return updated;
   }
 
-  async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
+  async updateConfiguration(orgName : string, cloudEvent : CloudEvent) : Promise<boolean> {
     let updated: boolean = false;
+
+    const config : ConfigurationModel = cloudEvent.data;
+    const keptnContext = cloudEvent.shkeptncontext;
+
     try {
       if (config.project && config.tag && !config.tag.includes('stable')) {
-        utils.logMessage(config.keptnContext, 'Change configuration.');
+
         const repo = await gh.getRepo(orgName, config.project);
 
         const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
@@ -129,13 +134,15 @@ export class GitHubService {
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
         if (config.stage) {
+          utils.logMessage(keptnContext, `Change configuration for ${config.service} in ${config.stage}.`);
+
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
           // service not availalbe in values file
           if (valuesObj[camelize(config.service)] === undefined) {
-            utils.logMessage(config.keptnContext, ' Service not available.');
+            utils.logMessage(keptnContext, ' Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
               const newConfig : ConfigurationModel = config;
@@ -158,25 +165,25 @@ export class GitHubService {
                   shipyardObj.stages[j].deployment_strategy);
 
                 if (updated) {
-                  utils.logMessage(config.keptnContext, 'Configuration changed.');
-                  utils.logMessage(config.keptnContext, 'Send configuration changed event.');
+                  utils.logMessage(keptnContext, `Change configuration for ${config.service} in ${config.stage}.`);
+                  utils.logMessage(keptnContext, 'Send configuration changed event.');
 
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
 
-                  utils.logMessage(config.keptnContext, 'Configuration changed event sent.');
+                  utils.logMessage(keptnContext, 'Configuration changed event sent.');
                 }
               }
             }
           }
         } else {
-          utils.logMessage(config.keptnContext, 'No stage to apply changes to.');
+          utils.logMessage(keptnContext, 'No stage to apply changes to.');
         }
       } else {
-        utils.logMessage(config.keptnContext, 'Project not defined.');
+        utils.logMessage(keptnContext, 'Project or tag not defined.');
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        utils.logMessage(config.keptnContext, 'Could not find shipyard file.');
+        utils.logMessage(keptnContext, `Could not find shipyard file for project.` );
         console.log(e.message);
       } else {
         console.log(e.message);
@@ -223,14 +230,14 @@ export class GitHubService {
     return created;
   }
 
-  async deleteProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
+  async deleteProject(orgName : string, cloudEvent : CloudEvent) : Promise<boolean> {
     let deleted = false;
     try {
-      const repo = await gh.getRepo(shipyard.project);
+      const repo = await gh.getRepo(cloudEvent.data.project);
       deleted = await repo.deleteRepo();
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[github-service] Could not find repository ${shipyard.project}.`);
+        console.log(`[github-service] Could not find repository ${cloudEvent.data.project}.`);
         console.log(e.message);
       }
     }
