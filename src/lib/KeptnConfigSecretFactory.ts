@@ -1,6 +1,6 @@
 import { CredentialsModel } from '../types/CredentialsModel';
 import { CredentialsSecret } from '../types/CredentialsSecret';
-import { base64encode } from 'nodejs-base64'
+import { base64encode } from 'nodejs-base64';
 
 export class KeptnConfigSecretFactory {
 

@@ -6,6 +6,7 @@ import { ApiModel, ApiModelProperty, SwaggerDefinitionConstant } from 'swagger-e
 })
 export class ShipyardModel {
   project: string;
+  registry: string;
   stages: Stage[];
 }
 

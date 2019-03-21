@@ -162,7 +162,7 @@ export class GitHubService {
                   utils.logMessage(config.keptnContext, 'Send configuration changed event.');
 
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
-                  
+
                   utils.logMessage(config.keptnContext, 'Configuration changed event sent.');
                 }
               }
@@ -210,9 +210,13 @@ export class GitHubService {
     if (created) {
       const repo = await gh.getRepo(orgName, shipyard.project);
 
+      const credService: CredentialsService = CredentialsService.getInstance();
+      await credService.addRegistryEntry(shipyard.registry, shipyard.project);
+
       await this.initialCommit(repo, shipyard);
       await this.createBranchesForEachStages(repo, shipyard);
       await this.addShipyardToMaster(repo, shipyard);
+
       console.log('[github-service]: Project created.');
       // TODO: WEBHOOK - await this.setHook(repo, shipyard);
     }

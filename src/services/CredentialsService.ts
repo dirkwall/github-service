@@ -7,6 +7,7 @@ const YAML = require('yamljs');
 import * as K8sApi from 'kubernetes-client';
 
 import { base64decode } from 'nodejs-base64';
+import { REPL_MODE_SLOPPY } from 'repl';
 
 export class CredentialsService {
 
@@ -22,6 +23,46 @@ export class CredentialsService {
       CredentialsService.instance = new CredentialsService();
     }
     return CredentialsService.instance;
+  }
+
+  async addRegistryEntry(registry: string, project: string) : Promise<boolean> {
+    let updated: boolean = false;
+
+    const configMap = await this.k8sClient.api.v1
+      .namespaces('keptn').configmap
+      .get({ name: 'keptn-orgs', pretty: true, exact: true, export: true });
+
+    const body = configMap.body;
+
+    for (let j = 0; j < configMap.body.items.length; j = j + 1) {
+      if (body.items[j].data.orgsToRepos) {
+        const mapping = JSON.parse(body.items[j].data.orgsToRepos);
+        mapping[registry] = project;
+
+        await this.k8sClient.api.v1.namespaces('keptn').configmaps('keptn-orgs').delete();
+
+        const orgsToRepos = {
+          orgsToRepos: JSON.stringify(mapping),
+        };
+
+        const conf = {
+          apiVersion: 'v1',
+          kind: 'ConfigMap',
+          metadata: {
+            name: 'keptn-orgs',
+            namespace: 'keptn',
+          },
+          data: orgsToRepos,
+        };
+
+        const result = await this.k8sClient.api.v1.namespaces('keptn').configmap.post({ body: conf });
+        if (result.statusCode === 201) {
+          updated = true;
+        }
+      }
+    }
+
+    return updated;
   }
 
   async updateGithubConfig(gitCreds: CredentialsModel): Promise<boolean> {
