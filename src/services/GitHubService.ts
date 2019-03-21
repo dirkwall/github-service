@@ -144,7 +144,7 @@ export class GitHubService {
 
           // service not availalbe in values file
           if (valuesObj[camelize(config.service)] === undefined) {
-            utils.logMessage(keptnContext, ' Service not available.');
+            utils.logMessage(keptnContext, 'Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
               const newConfig: ConfigurationModel = config;
@@ -490,8 +490,6 @@ export class GitHubService {
       }
     } else if (service.manifest) {
       const serviceName = service.manifest.applications[0].name;
-
-      console.log(`${serviceName}`);
 
       await repo.writeFile(
         stage.name,

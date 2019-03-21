@@ -21,8 +21,7 @@ class Utils {
     const service =
       await k8sClient.api.v1.namespace(namespace).service(serviceName).get();
 
-    console.log(service);
-    return service as K8sServiceInfo;
+      return service as K8sServiceInfo;
   }
 }
 
