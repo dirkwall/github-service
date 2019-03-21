@@ -41,17 +41,20 @@ export class GitHubService {
   private constructor() {
   }
 
-  static async getInstance() : Promise<GitHubService> {
+  static async getInstance(): Promise<GitHubService> {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
-      await this.updateCredentials();
+      await this.updateCredentials(undefined);
     }
     return GitHubService.instance;
   }
 
-  static async updateCredentials() {
+  static async updateCredentials(cloudEvent: KeptnCloudEvent) {
     const credService: CredentialsService = CredentialsService.getInstance();
-    const githubCreds: CredentialsModel = await credService.getGithubCredentials();
+    let keptnContext = "undefined";
+    if (cloudEvent) { keptnContext = cloudEvent.shkeptncontext; }
+    
+    const githubCreds: CredentialsModel = await credService.getGithubCredentials(keptnContext);
     GitHubService.gitHubOrg = githubCreds.org;
 
     gh = new GitHub({
@@ -61,8 +64,8 @@ export class GitHubService {
     });
   }
 
-  getCurrentStage(shipyardObj : any, stage : string) : string {
-    let currentStage : string = undefined;
+  getCurrentStage(shipyardObj: any, stage: string): string {
+    let currentStage: string = undefined;
 
     if (stage === undefined || stage === '' || stage === null) {
       currentStage = shipyardObj.stages[0].name;
@@ -76,13 +79,13 @@ export class GitHubService {
     return currentStage;
   }
 
-  async updateValuesFile(repo : any, valuesObj : any, config : ConfigurationModel, deploymentStrategy: string) : Promise<boolean>{
+  async updateValuesFile(repo: any, valuesObj: any, config: ConfigurationModel, deploymentStrategy: string): Promise<boolean>{
     let updated = false;
 
-    const repository : string = config.image;
-    const tag : string = config.tag;
+    const repository: string = config.image;
+    const tag: string = config.tag;
 
-    const serviceName : string = camelize(config.service);
+    const serviceName: string = camelize(config.service);
 
     if (deploymentStrategy === 'direct') {
       valuesObj[serviceName].image.repository = repository;
@@ -116,11 +119,11 @@ export class GitHubService {
     return updated;
   }
 
-  async updateConfiguration(orgName : string, cloudEvent : KeptnCloudEvent) : Promise<boolean> {
+  async updateConfiguration(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
     let updated: boolean = false;
 
-    const config : ConfigurationModel = cloudEvent.data;
-    const keptnContext : string = cloudEvent.shkeptncontext;
+    const config: ConfigurationModel = cloudEvent.data;
+    const keptnContext: string = cloudEvent.shkeptncontext;
 
     try {
       if (config.project && config.tag && !config.tag.includes('stable')) {
@@ -144,7 +147,7 @@ export class GitHubService {
             utils.logMessage(keptnContext, ' Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
-              const newConfig : ConfigurationModel = config;
+              const newConfig: ConfigurationModel = config;
 
               if (shipyardObj.stages[j].name === config.stage) {
 
@@ -191,7 +194,7 @@ export class GitHubService {
     return updated;
   }
 
-  async sendConfigChangedEvent(orgName : string, config : ConfigurationModel) : Promise<boolean> {
+  async sendConfigChangedEvent(orgName: string, config: ConfigurationModel): Promise<boolean> {
     const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
     keptnEvent.data = config;
     keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
@@ -199,75 +202,76 @@ export class GitHubService {
     return true;
   }
 
-  getPreviousBlueVersion(valuesObj : any, config : ConfigurationModel) : string {
+  getPreviousBlueVersion(valuesObj: any, config: ConfigurationModel): string {
     const serviceName = camelize(config.service);
-    let prevBlueVersion : string = valuesObj[`${serviceName}Blue`].image.tag;
+    let prevBlueVersion: string = valuesObj[`${serviceName}Blue`].image.tag;
     if (prevBlueVersion === undefined || prevBlueVersion === null) {
       prevBlueVersion = config.tag;
     }
     return prevBlueVersion;
   }
 
-  async createProject(orgName : string, cloudEvent : KeptnCloudEvent) : Promise<boolean> {
-    const shipyard : ShipyardModel = cloudEvent.data;
-    const keptnContext : string = cloudEvent.shkeptncontext;
+  async createProject(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
+    const shipyard: ShipyardModel = cloudEvent.data;
+    const keptnContext: string = cloudEvent.shkeptncontext;
 
     utils.logMessage(keptnContext, `Start to create project ${shipyard.project}.`);
 
-    const created: boolean = await this.createRepository(orgName, shipyard);
+    const created: boolean = await this.createRepository(orgName, shipyard, keptnContext);
     if (created) {
       const repo = await gh.getRepo(orgName, shipyard.project);
 
       const credService: CredentialsService = CredentialsService.getInstance();
       await credService.addRegistryEntry(shipyard.registry, shipyard.project);
 
-      await this.initialCommit(repo, shipyard);
-      await this.createBranchesForEachStages(repo, shipyard);
-      await this.addShipyardToMaster(repo, shipyard);
+      await this.initialCommit(repo, shipyard, keptnContext);
+      await this.createBranchesForEachStages(repo, shipyard, keptnContext);
+      await this.addShipyardToMaster(repo, shipyard, keptnContext);
 
       utils.logMessage(keptnContext, `Project ${shipyard.project} created.`);
     }
     return created;
   }
 
-  async deleteProject(orgName : string, cloudEvent : KeptnCloudEvent) : Promise<boolean> {
-    let deleted = false;
+  async deleteProject(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
+    let deleted: boolean = false;
+
+    const shipyard: ShipyardModel = cloudEvent.data;
+    const keptnContext: string = cloudEvent.shkeptncontext;
 
     try {
-      const repo = await gh.getRepo(cloudEvent.data.project);
+      const repo = await gh.getRepo(shipyard.project);
       deleted = await repo.deleteRepo();
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[github-service] Could not find repository ${cloudEvent.data.project}.`);
+        utils.logMessage(keptnContext, `Could not find repository ${shipyard.project}.`);
         console.log(e.message);
       }
     }
     return deleted;
   }
 
-  private async createRepository(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
-    const repository = {
-      name : shipyard.project,
-    };
+  private async createRepository(orgName: string, shipyard: ShipyardModel, keptnContext: string): Promise<boolean> {
+    const repository = { name: shipyard.project };
 
     try {
       const org = await gh.getOrganization(orgName);
-      const result = await org.createRepo(repository);
+      await org.createRepo(repository);
     } catch (e) {
       if (e.response) {
         if (e.response.statusText === 'Not Found') {
-          console.log(`[github-service] Could not find organziation ${orgName}.`);
+          utils.logMessage(keptnContext, `Could not find organziation ${orgName}.`);
         } else if (e.response.statusText === 'Unprocessable Entity') {
-          console.log(`[github-service] Repository ${shipyard.project} already available.`);
+          utils.logMessage(keptnContext, `Repository ${shipyard.project} already available.`);
         }
       }
-      console.log(`Error: ${e.message}`);
+      utils.logMessage(keptnContext, `Error: ${e.message}`);
       return false;
     }
     return true;
   }
 
-  private async initialCommit(repo : any, shipyard : ShipyardModel) : Promise<any> {
+  private async initialCommit(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -275,12 +279,12 @@ export class GitHubService {
         `# keptn takes care of your ${shipyard.project}`,
         '[keptn]: Initial commit', { encode: true });
     } catch (e) {
-      console.log('[github-service] Initial commit failed.');
+      utils.logMessage(keptnContext, `Initial commit failed.`);
       console.log(e.message);
     }
   }
 
-  private async createBranchesForEachStages(repo : any, shipyard : ShipyardModel) : Promise<any> {
+  private async createBranchesForEachStages(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
     try {
       const chart = {
         apiVersion: 'v1',
@@ -321,12 +325,12 @@ export class GitHubService {
         }
       });
     } catch (e) {
-      console.log('[github-service] Creating branches failed.');
+      utils.logMessage(keptnContext, `Creating branches failed.`);
       console.log(e.message);
     }
   }
 
-  private async addShipyardToMaster(repo: any, shipyard : ShipyardModel) : Promise<any> {
+  private async addShipyardToMaster(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -336,17 +340,17 @@ export class GitHubService {
         { encode: true });
 
     } catch (e) {
-      console.log('[github-service] Adding shipyard to master failed.');
+      utils.logMessage(keptnContext, `Adding shipyard to master failed.`);
       console.log(e.message);
     }
   }
 
-  async onboardService(orgName: string, cloudEvent: KeptnCloudEvent) : Promise<any> {
+  async onboardService(orgName: string, cloudEvent: KeptnCloudEvent): Promise<any> {
     const service: ServiceModel = cloudEvent.data;
-    const keptnContext : string = cloudEvent.shkeptncontext;
+    const keptnContext: string = cloudEvent.shkeptncontext;
 
     if ((service.values && service.values.service) || (service.manifest)) {
-      let serviceName : string = undefined;
+      let serviceName: string = undefined;
 
       if ((service.values && service.values.service)) {
         serviceName = camelize(service.values.service.name);
@@ -380,7 +384,7 @@ export class GitHubService {
             utils.logMessage(keptnContext, `Service already available in stage: ${stage.name}.`);
           } else {
             utils.logMessage(keptnContext, `Adding artifacts to: ${stage.name}.`);
-            await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
+            await this.addArtifactsToBranch(repo, service, stage, valuesObj, chartName, keptnContext);
             utils.logMessage(keptnContext, `Service onboarded to: ${stage.name}.`);
           }
         }));
@@ -393,7 +397,7 @@ export class GitHubService {
     }
   }
 
-  private async addArtifactsToBranch(repo: any, orgName: string, service : ServiceModel, stage: Stage, valuesObj: any, chartName: string) {
+  private async addArtifactsToBranch(repo: any, service: ServiceModel, stage: Stage, valuesObj: any, chartName: string, keptnContext: string) {
 
     if (service.values) {
       // update values file
@@ -439,17 +443,17 @@ export class GitHubService {
         const gitHubRootTree: TreeModel = (await repo.getTree(branch.data.commit.sha)).data;
 
         // get the content of helm-chart/templates
-        const helmTree : TreeModel = (
+        const helmTree: TreeModel = (
           await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)
           ).data;
-        const templateTree : TreeModel = (
+        const templateTree: TreeModel = (
           await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)
           ).data;
 
         // create blue/green yamls for each deployment/service
         for (let j = 0; j < templateTree.tree.length; j = j + 1) {
 
-          const template : TreeItem = templateTree.tree[j];
+          const template: TreeItem = templateTree.tree[j];
 
           if (template.path.indexOf(serviceName) === 0 &&
              (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
@@ -501,15 +505,15 @@ export class GitHubService {
       }
 
     } else {
-      console.log('[github-service] For onboarding a service, a values or manifest object must be available in the data block.');
+      utils.logMessage(keptnContext, `For onboarding a service, a values or manifest object must be available in the data block.`);
     }
   }
 
-  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, service : ServiceModel) {
+  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, service: ServiceModel) {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
-    let deploymentTpl : string = undefined;
+    let deploymentTpl: string = undefined;
 
     if (service.templates && service.templates.deployment) {
       deploymentTpl = service.templates.deployment;
@@ -528,7 +532,7 @@ export class GitHubService {
         { encode: true });
     }
 
-    let serviceTpl : string = undefined;
+    let serviceTpl: string = undefined;
 
     if (service.templates && service.templates.service) {
       serviceTpl = service.templates.service;
@@ -548,7 +552,7 @@ export class GitHubService {
     }
   }
 
-  async createIstioEntry(repo: any, project: string, serviceKey : string, serviceName : string, branch: string, chartName: string, istioIngressGatewayService: any) {
+  async createIstioEntry(repo: any, project: string, serviceKey: string, serviceName: string, branch: string, chartName: string, istioIngressGatewayService: any) {
     // create destination rule
     let destinationRuleTpl = await utils.readFileContent(GitHubService.destinationRuleTplFile);
     destinationRuleTpl = Mustache.render(destinationRuleTpl, {
@@ -580,7 +584,7 @@ export class GitHubService {
       { encode: true });
   }
 
-  async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
+  async createBlueGreenDeployment(repo: any, serviceName: string, decamelizedServiceName: string, branch: string, templateContent: any, template: any) {
     const serviceRegex = new RegExp(serviceName, 'g');
     const nameRegex = new RegExp(`name: ${decamelizedServiceName}`, 'g');
     const dplyRegex = new RegExp(`deployment: ${decamelizedServiceName}`, 'g');
@@ -620,7 +624,7 @@ export class GitHubService {
     await repo.deleteFile(branch, `helm-chart/templates/${template.path}`);
   }
 
-  private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
+  private async setHook(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
     try {
       const istioIngressGatewayService = await utils.getK8sServiceUrl(
         'istio-ingressgateway', 'istio-system');
@@ -636,20 +640,20 @@ export class GitHubService {
         config: {
           url: `https://${eventBrokerUri}/github`,
           content_type: 'json',
-          secret: await credService.getKeptnApiToken(),
+          secret: await credService.getKeptnApiToken(keptnContext),
           insecure_ssl: 1,
         },
       });
-      console.log(`[github-service] Webhook http://${eventBrokerUri}/github activated.`);
+      utils.logMessage(keptnContext, `Webhook http://${eventBrokerUri}/github activated.`);
 
     } catch (e) {
-      console.log('[github-service] Setting webhook failed.');
+      utils.logMessage(keptnContext, `Setting webhook failed.`);
       console.log(e.message);
     }
   }
 
   private async updateWebHook(
-    active: boolean, orgName: string, project: string) : Promise<void> {
+    active: boolean, orgName: string, project: string): Promise<void> {
 
     const repo = await gh.getRepo(orgName, project);
     const hooks = await repo.listHooks();

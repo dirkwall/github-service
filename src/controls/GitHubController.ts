@@ -71,9 +71,9 @@ export class GitHubController implements interfaces.Controller {
       await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent);
 
     } else if (request.body.eventType == 'configure') {
-      const updated: boolean = await credSvc.updateGithubConfig(cloudEvent.data);
+      const updated: boolean = await credSvc.updateGithubConfig(cloudEvent);
 
-      if (updated) { await GitHubService.updateCredentials(); }
+      if (updated) { await GitHubService.updateCredentials(cloudEvent); }
 
     } else if (request.body.type == 'sh.keptn.events.new-artefact') {
       await gitHubSvc.updateConfiguration(GitHubService.gitHubOrg, cloudEvent);

@@ -1,13 +1,16 @@
 import { CredentialsModel } from '../types/CredentialsModel';
 import { CredentialsSecret } from '../types/CredentialsSecret';
+import { KeptnCloudEvent } from '../types/KeptnCloudEvent';
 import { KeptnConfigSecretFactory } from '../lib/KeptnConfigSecretFactory';
 import { K8sClientFactory } from '../lib/K8sClientFactory';
-const YAML = require('yamljs');
+import { Utils } from '../lib/Utils';
 
 import * as K8sApi from 'kubernetes-client';
 
 import { base64decode } from 'nodejs-base64';
-import { REPL_MODE_SLOPPY } from 'repl';
+
+// Util class
+const utils = new Utils();
 
 export class CredentialsService {
 
@@ -66,25 +69,28 @@ export class CredentialsService {
     return updated;
   }
 
-  async updateGithubConfig(gitCreds: CredentialsModel): Promise<boolean> {
+  async updateGithubConfig(cloudEvent: KeptnCloudEvent): Promise<boolean> {
     let updated: boolean = false;
+
+    const gitCreds: CredentialsModel = cloudEvent.data;
+    const keptnContext: string = cloudEvent.shkeptncontext;
     
-    console.log('[github-service]: Start secret creation.');
+    utils.logMessage(keptnContext, `Start secret creation.`);
 
     if (gitCreds !== undefined && gitCreds.org && gitCreds.token && gitCreds.user) {
       const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(gitCreds);
-      const updatedSecret: CredentialsSecret = await this.updateGithubCredentials(secret);
+      const updatedSecret: CredentialsSecret = await this.updateGithubCredentials(secret, keptnContext);
       if (updatedSecret !== undefined) {
         updated = true;
-        console.log('[github-service]: Secret created.');
+        utils.logMessage(keptnContext, `Secret created.`);
       }
     } else {
-      console.log('[github-service]: Org, token or user not set.');
+      utils.logMessage(keptnContext, `Org, token or user not set.`);
     }
     return updated;
   }
 
-  async getKeptnApiToken(): Promise<string> {
+  async getKeptnApiToken(keptnContext: string): Promise<string> {
     let token;
     const secret = await this.k8sClient.api.v1
       .namespaces('keptn').secrets
@@ -95,14 +101,14 @@ export class CredentialsService {
       if (apiToken && apiToken.data !== undefined) {
         token = base64decode(apiToken.data['keptn-api-token']);
       } else {
-        console.log('[github-service]: The secret does not contain the proper information.');
+        utils.logMessage(keptnContext, `The secret does not contain the proper information.`);
       }
     }
 
     return token;
   }
 
-  async getGithubCredentials(): Promise<CredentialsModel> {
+  async getGithubCredentials(keptnContext: string): Promise<CredentialsModel> {
     const gitHubCredentials: CredentialsModel = new CredentialsModel();
 
     const secret = await this.k8sClient.api.v1
@@ -116,21 +122,21 @@ export class CredentialsService {
         gitHubCredentials.user = base64decode(ghItem.data.user);
         gitHubCredentials.token = base64decode(ghItem.data.token);
       } else {
-        console.log('[github-service]: The secret does not contain the proper information.');
+        utils.logMessage(keptnContext, `The secret does not contain the proper information.`);
       }
     }
 
     return gitHubCredentials;
   }
 
-  private async updateGithubCredentials(secret: CredentialsSecret): Promise<CredentialsSecret> {
+  private async updateGithubCredentials(secret: CredentialsSecret, keptnContext: string): Promise<CredentialsSecret> {
     let createdSecret: CredentialsSecret = undefined;
     if (secret !== undefined) {
       try {
         const deleteResult = await this.k8sClient.api.v1
           .namespaces('keptn').secrets('github-credentials').delete();
       } catch (e) {
-        console.log('[github-service]: Can not delete credentials.');
+        utils.logMessage(keptnContext, `Can not delete credentials.`);
         console.log(e.message);
       }
       createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secret.post({ body: secret });
