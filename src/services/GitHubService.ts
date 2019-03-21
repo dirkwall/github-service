@@ -68,12 +68,11 @@ export class GitHubService {
       currentStage = shipyardObj.stages[0].name;
     } else {
       for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
-        if (shipyardObj.stages[j].name === stage && j+1 < shipyardObj.stages.length) {
-          currentStage = shipyardObj.stages[j+1].name;
+        if (shipyardObj.stages[j].name === stage && j + 1 < shipyardObj.stages.length) {
+          currentStage = shipyardObj.stages[j + 1].name;
         }
       }
     }
-
     return currentStage;
   }
 
@@ -121,7 +120,7 @@ export class GitHubService {
     let updated: boolean = false;
 
     const config : ConfigurationModel = cloudEvent.data;
-    const keptnContext = cloudEvent.shkeptncontext;
+    const keptnContext : string = cloudEvent.shkeptncontext;
 
     try {
       if (config.project && config.tag && !config.tag.includes('stable')) {
@@ -209,9 +208,11 @@ export class GitHubService {
     return prevBlueVersion;
   }
 
-  async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
+  async createProject(orgName : string, cloudEvent : KeptnCloudEvent) : Promise<boolean> {
+    const shipyard : ShipyardModel = cloudEvent.data;
+    const keptnContext : string = cloudEvent.shkeptncontext;
 
-    console.log(`[github-service]: Start to create project.`);
+    utils.logMessage(keptnContext, `Start to create project ${shipyard.project}.`);
 
     const created: boolean = await this.createRepository(orgName, shipyard);
     if (created) {
@@ -224,14 +225,14 @@ export class GitHubService {
       await this.createBranchesForEachStages(repo, shipyard);
       await this.addShipyardToMaster(repo, shipyard);
 
-      console.log('[github-service]: Project created.');
-      // TODO: WEBHOOK - await this.setHook(repo, shipyard);
+      utils.logMessage(keptnContext, `Project ${shipyard.project} created.`);
     }
     return created;
   }
 
   async deleteProject(orgName : string, cloudEvent : KeptnCloudEvent) : Promise<boolean> {
     let deleted = false;
+
     try {
       const repo = await gh.getRepo(cloudEvent.data.project);
       deleted = await repo.deleteRepo();
@@ -242,47 +243,6 @@ export class GitHubService {
       }
     }
     return deleted;
-  }
-
-  private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
-    try {
-      const istioIngressGatewayService = await utils.getK8sServiceUrl(
-        'istio-ingressgateway', 'istio-system');
-
-      const eventBrokerUri = `event-broker-ext.keptn.` +
-        `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
-
-      const credService: CredentialsService = CredentialsService.getInstance();
-
-      await repo.createHook({
-        name: 'web',
-        events: ['push'],
-        config: {
-          url: `https://${eventBrokerUri}/github`,
-          content_type: 'json',
-          secret: await credService.getKeptnApiToken(),
-          insecure_ssl: 1,
-        },
-      });
-      console.log(`[github-service] Webhook http://${eventBrokerUri}/github activated.`);
-
-    } catch (e) {
-      console.log('[github-service] Setting webhook failed.');
-      console.log(e.message);
-    }
-  }
-
-  private async updateWebHook(
-    active: boolean, orgName: string, project: string) : Promise<void> {
-
-    const repo = await gh.getRepo(orgName, project);
-    const hooks = await repo.listHooks();
-    const hook = hooks.data.find((item) => {
-      return item.config !== undefined && item.config.url.indexOf('event-broker') >= 0;
-    });
-    repo.updateHook(hook.id, {
-      active,
-    });
   }
 
   private async createRepository(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
@@ -381,9 +341,9 @@ export class GitHubService {
     }
   }
 
-  async onboardService(orgName: string, service: ServiceModel) : Promise<any> {
-
-    console.log('[github-service]: Start service onboarding.');
+  async onboardService(orgName: string, cloudEvent: KeptnCloudEvent) : Promise<any> {
+    const service: ServiceModel = cloudEvent.data;
+    const keptnContext : string = cloudEvent.shkeptncontext;
 
     if ((service.values && service.values.service) || (service.manifest)) {
       let serviceName : string = undefined;
@@ -393,8 +353,10 @@ export class GitHubService {
       } else if (service.manifest) {
         serviceName = service.manifest.applications[0].name;
       } else {
-        console.log(`[github-service] Manifest type not implemented.`);
+        utils.logMessage(keptnContext, `Manifest type not implemented.`);
       }
+
+      utils.logMessage(keptnContext, `Start onboarding of service ${serviceName}.`);
 
       try {
         const repo = await gh.getRepo(orgName, service.project);
@@ -415,21 +377,19 @@ export class GitHubService {
 
           // service already defined in helm chart
           if (valuesObj[serviceName] !== undefined) {
-            console.log(`[github-service] Service already available in stage: ${stage.name}.`);
+            utils.logMessage(keptnContext, `Service already available in stage: ${stage.name}.`);
           } else {
-            console.log(`[github-service] Adding artifacts to: ${stage.name}.`);
+            utils.logMessage(keptnContext, `Adding artifacts to: ${stage.name}.`);
             await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
-            console.log(`[github-service]: Service onboarded to: ${stage.name}. `);
+            utils.logMessage(keptnContext, `Service onboarded to: ${stage.name}.`);
           }
         }));
-        // TODO: WEBHOOK - this.updateWebHook(true, orgName, service.project);
       } catch (e) {
-        console.log('[github-service] Onboarding service failed.');
+        utils.logMessage(keptnContext, `Onboarding service failed.`);
         console.log(e.message);
-        // TODO: WEBHOOK - await this.updateWebHook(true, orgName, service.project);
       }
     } else {
-      console.log('[github-service] CloudEvent does not contain data.values.');
+      utils.logMessage(keptnContext, `CloudEvent does not contain data.values.`);
     }
   }
 
@@ -658,5 +618,46 @@ export class GitHubService {
 
     // delete the original template
     await repo.deleteFile(branch, `helm-chart/templates/${template.path}`);
+  }
+
+  private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
+    try {
+      const istioIngressGatewayService = await utils.getK8sServiceUrl(
+        'istio-ingressgateway', 'istio-system');
+
+      const eventBrokerUri = `event-broker-ext.keptn.` +
+        `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
+
+      const credService: CredentialsService = CredentialsService.getInstance();
+
+      await repo.createHook({
+        name: 'web',
+        events: ['push'],
+        config: {
+          url: `https://${eventBrokerUri}/github`,
+          content_type: 'json',
+          secret: await credService.getKeptnApiToken(),
+          insecure_ssl: 1,
+        },
+      });
+      console.log(`[github-service] Webhook http://${eventBrokerUri}/github activated.`);
+
+    } catch (e) {
+      console.log('[github-service] Setting webhook failed.');
+      console.log(e.message);
+    }
+  }
+
+  private async updateWebHook(
+    active: boolean, orgName: string, project: string) : Promise<void> {
+
+    const repo = await gh.getRepo(orgName, project);
+    const hooks = await repo.listHooks();
+    const hook = hooks.data.find((item) => {
+      return item.config !== undefined && item.config.url.indexOf('event-broker') >= 0;
+    });
+    repo.updateHook(hook.id, {
+      active,
+    });
   }
 }

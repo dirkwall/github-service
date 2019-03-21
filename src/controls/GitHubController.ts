@@ -65,10 +65,10 @@ export class GitHubController implements interfaces.Controller {
     const credSvc: CredentialsService = CredentialsService.getInstance();
 
     if (request.body.eventType == 'create.project') {
-      await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
+      await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent);
 
     } else if (request.body.eventType == 'onboard.service') {
-      await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
+      await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent);
 
     } else if (request.body.eventType == 'configure') {
       const updated: boolean = await credSvc.updateGithubConfig(cloudEvent.data);
