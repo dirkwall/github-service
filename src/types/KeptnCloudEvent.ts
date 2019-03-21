@@ -1,4 +1,4 @@
-export interface CloudEvent {
+export interface KeptnCloudEvent {
   shkeptncontext: string;
   data: any;
 }

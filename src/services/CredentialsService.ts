@@ -55,7 +55,8 @@ export class CredentialsService {
           data: orgsToRepos,
         };
 
-        const result = await this.k8sClient.api.v1.namespaces('keptn').configmap.post({ body: conf });
+        const result = await this.k8sClient.api.v1.namespaces('keptn')
+          .configmap.post({ body: conf });
         if (result.statusCode === 201) {
           updated = true;
         }
@@ -67,6 +68,9 @@ export class CredentialsService {
 
   async updateGithubConfig(gitCreds: CredentialsModel): Promise<boolean> {
     let updated: boolean = false;
+    
+    console.log('[github-service]: Start secret creation.');
+
     if (gitCreds !== undefined && gitCreds.org && gitCreds.token && gitCreds.user) {
       const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(gitCreds);
       const updatedSecret: CredentialsSecret = await this.updateGithubCredentials(secret);

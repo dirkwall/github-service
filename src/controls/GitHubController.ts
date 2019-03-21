@@ -59,43 +59,29 @@ export class GitHubController implements interfaces.Controller {
     next: express.NextFunction,
   ): Promise<void> {
 
+    const cloudEvent : CloudEvent = request.body;
+
+    const gitHubSvc : GitHubService = await GitHubService.getInstance();
+    const credSvc: CredentialsService = CredentialsService.getInstance();
+
     if (request.body.eventType == 'create.project') {
-
-      console.log('[github-service]: Start project creation.');
-
-      const cloudEvent : CloudEvent = request.body;
-      const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent.data);
 
     } else if (request.body.eventType == 'onboard.service') {
-
-      console.log('[github-service]: Start service onboarding.');
-
-      const cloudEvent : CloudEvent = request.body;
-      const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent.data);
 
     } else if (request.body.eventType == 'configure') {
-
-      console.log('[github-service]: Start secret creation.');
-
-      const cloudEvent : CloudEvent = request.body;
-      const credSvc: CredentialsService = CredentialsService.getInstance();
       const updated: boolean = await credSvc.updateGithubConfig(cloudEvent.data);
 
-      if (updated) {
-        await GitHubService.updateCredentials();
-      }
+      if (updated) { await GitHubService.updateCredentials(); }
 
     } else if (request.body.type == 'sh.keptn.events.new-artefact') {
-
-      const cloudEvent : CloudEvent = request.body;
-      const gitHubSvc : GitHubService = await GitHubService.getInstance();
       await gitHubSvc.updateConfiguration(GitHubService.gitHubOrg, cloudEvent);
 
     } else {
       if (request.body.shkeptncontext ) {
-        utils.logMessage(request.body.shkeptncontext, `This service does not handle the event type ${request.body.eventType}.`);
+        utils.logMessage(request.body.shkeptncontext,
+          `This service does not handle the event type ${request.body.eventType}.`);
       }
     }
 
@@ -124,11 +110,9 @@ export class GitHubController implements interfaces.Controller {
   ): Promise<void> {
 
     if (request.body.eventType === 'project') {
-
       const cloudEvent : CloudEvent = request.body;
       const gitHub : GitHubService = await GitHubService.getInstance();
       await gitHub.deleteProject(GitHubService.gitHubOrg , cloudEvent);
-
     }
 
     const result = {

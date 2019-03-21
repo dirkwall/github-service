@@ -4,7 +4,7 @@ import { ServiceModel } from '../types/ServiceModel';
 import { Stage, ShipyardModel } from '../types/ShipyardModel';
 import { CredentialsModel } from '../types/CredentialsModel';
 import { ConfigurationModel } from '../types/ConfigurationModel';
-import { CloudEvent } from '../types/CloudEvent';
+import { KeptnCloudEvent } from '../types/KeptnCloudEvent';
 import { KeptnRequestModel } from '../types/KeptnRequestModel';
 import { TreeModel , TreeItem } from '../types/TreeModel';
 
@@ -117,7 +117,7 @@ export class GitHubService {
     return updated;
   }
 
-  async updateConfiguration(orgName : string, cloudEvent : CloudEvent) : Promise<boolean> {
+  async updateConfiguration(orgName : string, cloudEvent : KeptnCloudEvent) : Promise<boolean> {
     let updated: boolean = false;
 
     const config : ConfigurationModel = cloudEvent.data;
@@ -134,7 +134,7 @@ export class GitHubService {
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
         if (config.stage) {
-          utils.logMessage(keptnContext, `Change configuration for ${config.service} in ${config.stage}.`);
+          utils.logMessage(keptnContext, `Change configuration for ${config.service} in project ${config.project}, stage ${config.stage}.`);
 
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
@@ -165,7 +165,7 @@ export class GitHubService {
                   shipyardObj.stages[j].deployment_strategy);
 
                 if (updated) {
-                  utils.logMessage(keptnContext, `Change configuration for ${config.service} in ${config.stage}.`);
+                  utils.logMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
                   utils.logMessage(keptnContext, 'Send configuration changed event.');
 
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
@@ -193,14 +193,11 @@ export class GitHubService {
   }
 
   async sendConfigChangedEvent(orgName : string, config : ConfigurationModel) : Promise<boolean> {
-    let sent : boolean = false;
-
     const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
     keptnEvent.data = config;
     keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
     await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
-
-    return sent;
+    return true;
   }
 
   getPreviousBlueVersion(valuesObj : any, config : ConfigurationModel) : string {
@@ -213,6 +210,9 @@ export class GitHubService {
   }
 
   async createProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
+
+    console.log(`[github-service]: Start to create project.`);
+
     const created: boolean = await this.createRepository(orgName, shipyard);
     if (created) {
       const repo = await gh.getRepo(orgName, shipyard.project);
@@ -230,7 +230,7 @@ export class GitHubService {
     return created;
   }
 
-  async deleteProject(orgName : string, cloudEvent : CloudEvent) : Promise<boolean> {
+  async deleteProject(orgName : string, cloudEvent : KeptnCloudEvent) : Promise<boolean> {
     let deleted = false;
     try {
       const repo = await gh.getRepo(cloudEvent.data.project);
@@ -381,7 +381,10 @@ export class GitHubService {
     }
   }
 
-  async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
+  async onboardService(orgName: string, service: ServiceModel) : Promise<any> {
+
+    console.log('[github-service]: Start service onboarding.');
+
     if ((service.values && service.values.service) || (service.manifest)) {
       let serviceName : string = undefined;
 
