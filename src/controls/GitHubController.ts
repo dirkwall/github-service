@@ -61,13 +61,13 @@ export class GitHubController implements interfaces.Controller {
     const gitHubSvc : GitHubService = await GitHubService.getInstance();
     const credSvc: CredentialsService = CredentialsService.getInstance();
 
-    if (request.body.eventType == 'create.project') {
+    if (request.body.eventType == 'create.project' || request.body.type == 'create.project' ) {
       await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent);
 
-    } else if (request.body.eventType == 'onboard.service') {
+    } else if (request.body.eventType == 'onboard.service' || request.body.type == 'onboard.service' ) {
       await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent);
 
-    } else if (request.body.eventType == 'configure') {
+    } else if (request.body.eventType == 'configure' || request.body.type == 'configure' ) {
       const updated: boolean = await credSvc.updateGithubConfig(cloudEvent);
 
       if (updated) { await GitHubService.updateCredentials(cloudEvent); }
