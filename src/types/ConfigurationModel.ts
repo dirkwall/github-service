@@ -7,5 +7,4 @@ export interface ConfigurationModel {
   service: string;
   image: string;
   tag: string;
-  prevblueversion: string;
 }

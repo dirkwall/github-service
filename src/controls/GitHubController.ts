@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import * as express from 'express';
-import { inject, injectable } from 'inversify';
 import {
   controller,
   httpGet,
@@ -18,9 +17,7 @@ import {
 
 import { GitHubService } from '../services/GitHubService';
 import { CredentialsService } from '../services/CredentialsService';
-
 import { CloudEvent } from 'cloudevent';
-import { ConfigurationModel } from 'ConfigurationModel';
 
 import { Utils } from '../lib/Utils';
 

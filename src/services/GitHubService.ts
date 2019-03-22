@@ -79,8 +79,8 @@ export class GitHubService {
     return currentStage;
   }
 
-  async updateValuesFile(repo: any, valuesObj: any, config: ConfigurationModel, deploymentStrategy: string): Promise<boolean>{
-    let updated = false;
+  async updateValuesFile(repo: any, valuesObj: any, config: ConfigurationModel, deploymentStrategy: string, keptnContext): Promise<boolean>{
+    let switched: boolean = true;
 
     const repository: string = config.image;
     const tag: string = config.tag;
@@ -91,32 +91,25 @@ export class GitHubService {
       valuesObj[serviceName].image.repository = repository;
       valuesObj[serviceName].image.tag = tag;
 
-      const result = await repo.writeFile(
-        config.stage, 'helm-chart/values.yaml',
-        YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${serviceName}:${config.image}`,
-        { encode: true });
-
-      if (result.statusText === 'OK') {
-        updated = true;
-      }
     } else if (deploymentStrategy === 'blue_green_service') {
       valuesObj[`${serviceName}Blue`].image.repository = repository;
       valuesObj[`${serviceName}Green`].image.repository = repository;
 
-      valuesObj[`${serviceName}Blue`].image.tag = tag;
+      let virtualService = await this.getVirtualService(repo, config);
+      const freeColor: string = this.getFreeColor(virtualService);
 
-      const result = await repo.writeFile(
-        config.stage, 'helm-chart/values.yaml',
-        YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${serviceName}:${config.image}`,
-        { encode: true });
+      valuesObj[`${serviceName}${freeColor}`].image.tag = tag;
 
-      if (result.statusText === 'OK') {
-        updated = true;
-      }
+      switched = await this.switchBlueGreen(repo, config, virtualService, keptnContext);
     }
-    return updated;
+
+    const result = await repo.writeFile(
+      config.stage, 'helm-chart/values.yaml',
+      YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
+      `[keptn-config-change]:${serviceName}:${config.image}`,
+      { encode: true });
+
+    return (result.statusText === 'OK') && switched;
   }
 
   async updateConfiguration(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
@@ -126,7 +119,7 @@ export class GitHubService {
     const keptnContext: string = cloudEvent.shkeptncontext;
 
     try {
-      if (config.project && config.tag && !config.tag.includes('stable')) {
+      if (config.project && config.tag) {
 
         const repo = await gh.getRepo(orgName, config.project);
 
@@ -155,16 +148,12 @@ export class GitHubService {
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
 
-                if (newConfig.deploymentstrategy === 'blue_green_service') {
-                  const prevBlueVersion = this.getPreviousBlueVersion(valuesObj, config);
-                  newConfig.prevblueversion = prevBlueVersion;
-                }
-
                 updated = await this.updateValuesFile(
                   repo,
                   valuesObj,
                   config,
-                  shipyardObj.stages[j].deployment_strategy);
+                  shipyardObj.stages[j].deployment_strategy,
+                  keptnContext);
 
                 if (updated) {
                   utils.logMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
@@ -203,13 +192,51 @@ export class GitHubService {
     return true;
   }
 
-  getPreviousBlueVersion(valuesObj: any, config: ConfigurationModel): string {
-    const serviceName = camelize(config.service);
-    let prevBlueVersion: string = valuesObj[`${serviceName}Blue`].image.tag;
-    if (prevBlueVersion === undefined || prevBlueVersion === null) {
-      prevBlueVersion = config.tag;
+  getFreeColor(virtualService: any): string {
+    let freeColor: string = 'Blue';
+
+    if(virtualService.spec.http[0].route) {
+      if(virtualService.spec.http[0].route[0].destination.subset == 'blue' && 
+         virtualService.spec.http[0].route[0].weight == 100) {
+        freeColor = 'Green';
+      } else if(virtualService.spec.http[0].route[0].destination.subset == 'green' && 
+        virtualService.spec.http[0].route[0].weight == 100) {
+        freeColor = 'Blue';
+      }
     }
-    return prevBlueVersion;
+
+    return freeColor;
+  }
+
+  async getVirtualService(repo: any, config: ConfigurationModel): Promise<any> {
+    const virtualSvcYaml = await repo.getContents(config.stage, `helm-chart/templates/istio-virtual-service-${config.service}.yaml`);
+    let virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
+    return virtualService;
+  }
+
+  async switchBlueGreen(repo: any, config: ConfigurationModel, virtualService: any, keptnContext: string): Promise<boolean> {
+
+    if(virtualService.spec.http[0].route) {
+      if( virtualService.spec.http[0].route[0].weight == 100) {
+        virtualService.spec.http[0].route[0].weight = 0;
+        virtualService.spec.http[0].route[1].weight = 100;
+      } else if(virtualService.spec.http[0].route[1].weight == 100) {
+        virtualService.spec.http[0].route[0].weight = 100;
+        virtualService.spec.http[0].route[1].weight = 0;
+      } else {
+        utils.logMessage(keptnContext, `The virtual service configuration does not support blue green.` );
+        return false;
+      }
+    }
+
+    const result = await repo.writeFile(
+      config.stage, 
+      `helm-chart/templates/istio-virtual-service-${config.service}.yaml`,
+      YAML.stringify(virtualService, 100).replace(/\'/g, ''),
+      `[keptn]: Switched blue green`,
+      { encode: true });
+
+    return (result.statusText === 'OK');
   }
 
   async createProject(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
