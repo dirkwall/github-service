@@ -451,8 +451,6 @@ export class GitHubService {
         bgValues[`${serviceName}Blue`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
         bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
 
-        bgValues[`${serviceName}Green`].image.tag = `${stage.name}-stable`;
-
         if (bgValues[`${serviceName}Blue`].service) {
           bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
         }
