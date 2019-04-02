@@ -106,7 +106,7 @@ export class GitHubService {
     const result = await repo.writeFile(
       config.stage, 'helm-chart/values.yaml',
       YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-      `[keptn-config-change]:${serviceName}:${config.image}`,
+      `[keptn]:${serviceName}:${config.image}`,
       { encode: true });
 
     return (result.statusText === 'OK') && switched;
