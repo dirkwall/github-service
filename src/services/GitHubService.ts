@@ -34,7 +34,8 @@ export class GitHubService {
 
   private static gatewayTplFile: string = './templates/istio-manifests/gateway.tpl';
   private static destinationRuleTplFile: string = './templates/istio-manifests/destination_rule.tpl';
-  private static virtualServiceTplFile: string = './templates/istio-manifests/virtual_service.tpl';
+  private static virtualServiceTplFileDirect: string = './templates/istio-manifests/virtual_service_direct.tpl';
+  private static virtualServiceTplFileBlueGreen: string = './templates/istio-manifests/virtual_service_blue_green.tpl';
   private static deploymentTplFile: string = './templates/service-template/deployment.tpl';
   private static serviceTplFile: string = './templates/service-template/service.tpl';
 
@@ -51,9 +52,9 @@ export class GitHubService {
 
   static async updateCredentials(cloudEvent: KeptnCloudEvent) {
     const credService: CredentialsService = CredentialsService.getInstance();
-    let keptnContext = "undefined";
+    let keptnContext = 'undefined';
     if (cloudEvent) { keptnContext = cloudEvent.shkeptncontext; }
-    
+
     const githubCreds: CredentialsModel = await credService.getGithubCredentials(keptnContext);
     GitHubService.gitHubOrg = githubCreds.org;
 
@@ -95,7 +96,7 @@ export class GitHubService {
       valuesObj[`${serviceName}Blue`].image.repository = repository;
       valuesObj[`${serviceName}Green`].image.repository = repository;
 
-      let virtualService = await this.getVirtualService(repo, config);
+      const virtualService = await this.getVirtualService(repo, config);
       const freeColor: string = this.getFreeColor(virtualService);
 
       valuesObj[`${serviceName}${freeColor}`].image.tag = tag;
@@ -120,7 +121,6 @@ export class GitHubService {
 
     try {
       if (config.project && config.tag) {
-
         const repo = await gh.getRepo(orgName, config.project);
 
         const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
@@ -195,12 +195,12 @@ export class GitHubService {
   getFreeColor(virtualService: any): string {
     let freeColor: string = 'Blue';
 
-    if(virtualService.spec.http[0].route) {
-      if(virtualService.spec.http[0].route[0].destination.subset == 'blue' && 
-         virtualService.spec.http[0].route[0].weight == 100) {
+    if (virtualService.spec.http[0].route) {
+      if (virtualService.spec.http[0].route[0].destination.subset == 'blue' &&
+         virtualService.spec.http[0].route[0].weight === 100) {
         freeColor = 'Green';
-      } else if(virtualService.spec.http[0].route[0].destination.subset == 'green' && 
-        virtualService.spec.http[0].route[0].weight == 100) {
+      } else if(virtualService.spec.http[0].route[0].destination.subset == 'green' &&
+        virtualService.spec.http[0].route[0].weight === 100) {
         freeColor = 'Blue';
       }
     }
@@ -209,18 +209,19 @@ export class GitHubService {
   }
 
   async getVirtualService(repo: any, config: ConfigurationModel): Promise<any> {
-    const virtualSvcYaml = await repo.getContents(config.stage, `helm-chart/templates/istio-virtual-service-${config.service}.yaml`);
-    let virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
+    const virtualSvcYaml = await repo.getContents(config.stage, 
+      `helm-chart/templates/istio-virtual-service-${config.service}.yaml`);
+    const virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
     return virtualService;
   }
 
   async switchBlueGreen(repo: any, config: ConfigurationModel, virtualService: any, keptnContext: string): Promise<boolean> {
 
-    if(virtualService.spec.http[0].route) {
-      if( virtualService.spec.http[0].route[0].weight == 100) {
+    if (virtualService.spec.http[0].route) {
+      if (virtualService.spec.http[0].route[0].weight === 100) {
         virtualService.spec.http[0].route[0].weight = 0;
         virtualService.spec.http[0].route[1].weight = 100;
-      } else if(virtualService.spec.http[0].route[1].weight == 100) {
+      } else if(virtualService.spec.http[0].route[1].weight === 100) {
         virtualService.spec.http[0].route[0].weight = 100;
         virtualService.spec.http[0].route[1].weight = 0;
       } else {
@@ -448,6 +449,7 @@ export class GitHubService {
         'istio-ingressgateway', 'istio-system');
 
       if (stage.deployment_strategy === 'direct') {
+        let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFileDirect);
         await this.createVirtualService(
           repo,
           service.project,
@@ -455,6 +457,7 @@ export class GitHubService {
           stage.name,
           chartName,
           istioIngressGatewayService,
+          virtualServiceTpl,
         );
 
       } else if (stage.deployment_strategy === 'blue_green_service') {
@@ -488,13 +491,9 @@ export class GitHubService {
             const templateContent = base64decode(templateContentB64Enc.data.content);
 
             if (template.path.indexOf('-service.yaml') > 0) {
-              await this.createDestinationRule(
-                repo,
-                serviceName,
-                stage.name,
-                chartName,
-              );
+              await this.createDestinationRule(repo, serviceName, stage.name, chartName);
 
+              let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFileBlueGreen);
               await this.createVirtualService(
                 repo,
                 service.project,
@@ -502,6 +501,7 @@ export class GitHubService {
                 stage.name,
                 chartName,
                 istioIngressGatewayService,
+                virtualServiceTpl,
               );
 
             } else if (template.path.indexOf('-deployment.yaml') > 0) {
@@ -615,8 +615,7 @@ export class GitHubService {
       { encode: true });
   }
 
-  async createVirtualService(repo: any, project: string, serviceName: string, branch: string, chartName: string, gateway: any) {
-    let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFile);
+  async createVirtualService(repo: any, project: string, serviceName: string, branch: string, chartName: string, gateway: any, virtualServiceTpl: any) {
     const serviceKey = decamelize(serviceName, '-');
 
     virtualServiceTpl = Mustache.render(virtualServiceTpl, {
