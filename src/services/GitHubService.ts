@@ -338,8 +338,10 @@ export class GitHubService {
           '[keptn]: Added helm-chart values.yaml file.',
           { encode: true });
 
-        if (stage.deployment_strategy === 'blue_green_service') {
-          // add istio gateway to stage
+        // add istio gateway to stage
+        if ((stage.deployment_strategy === 'blue_green_service') ||
+         (stage.deployment_strategy === 'direct')) {
+
           let gatewaySpec = await utils.readFileContent(GitHubService.gatewayTplFile);
           gatewaySpec = Mustache.render(gatewaySpec,
             { application: shipyard.project, stage: stage.name });
@@ -431,6 +433,7 @@ export class GitHubService {
       // update values file
       const serviceName = camelize(service.values.service.name);
       valuesObj[serviceName] = service.values;
+
       await repo.writeFile(
         stage.name,
         'helm-chart/values.yaml',
@@ -444,25 +447,18 @@ export class GitHubService {
       const istioIngressGatewayService = await utils.getK8sServiceUrl(
         'istio-ingressgateway', 'istio-system');
 
-      if (stage.deployment_strategy === 'blue_green_service') {
-        const bgValues = valuesObj;
-
-        // update values file
-        bgValues[`${serviceName}Blue`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
-        bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
-
-        if (bgValues[`${serviceName}Blue`].service) {
-          bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
-        }
-        if (bgValues[`${serviceName}Green`].service) {
-          bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
-        }
-        await repo.writeFile(
+      if (stage.deployment_strategy === 'direct') {
+        await this.createVirtualService(
+          repo,
+          service.project,
+          serviceName,
           stage.name,
-          `helm-chart/values.yaml`,
-          YAML.stringify(bgValues, 100).replace(/\'/g, ''),
-          `[keptn]: Added blue/green values`,
-          { encode: true });
+          chartName,
+          istioIngressGatewayService,
+        );
+
+      } else if (stage.deployment_strategy === 'blue_green_service') {
+        await this.addBlueGreenValues(repo, valuesObj, serviceName, stage);
 
         // get templates for the service
         const branch = await repo.getBranch(stage.name);
@@ -472,6 +468,7 @@ export class GitHubService {
         const helmTree: TreeModel = (
           await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)
           ).data;
+
         const templateTree: TreeModel = (
           await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)
           ).data;
@@ -485,27 +482,32 @@ export class GitHubService {
              (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
              (template.path.indexOf('Blue') < 0 && template.path.indexOf('Green') < 0)) {
 
-            const decamelizedserviceName = decamelize(serviceName, '-');
             const templateContentB64Enc = await repo.getContents(
               stage.name,
               `helm-chart/templates/${template.path}`);
             const templateContent = base64decode(templateContentB64Enc.data.content);
 
             if (template.path.indexOf('-service.yaml') > 0) {
-              await this.createIstioEntry(
+              await this.createDestinationRule(
+                repo,
+                serviceName,
+                stage.name,
+                chartName,
+              );
+
+              await this.createVirtualService(
                 repo,
                 service.project,
-                decamelizedserviceName,
                 serviceName,
                 stage.name,
                 chartName,
                 istioIngressGatewayService,
               );
+
             } else if (template.path.indexOf('-deployment.yaml') > 0) {
               await this.createBlueGreenDeployment(
                 repo,
                 serviceName,
-                decamelizedserviceName,
                 stage.name,
                 templateContent,
                 template,
@@ -514,6 +516,7 @@ export class GitHubService {
           }
         }
       }
+
     } else if (service.manifest) {
       const serviceName = service.manifest.applications[0].name;
 
@@ -524,13 +527,32 @@ export class GitHubService {
         `[keptn]: Added manifest for ${serviceName}.`,
         { encode: true });
 
-      if (stage.deployment_strategy === 'blue_green_service') {
-        // TODO: handle blue green deployments.
-      }
-
     } else {
       utils.logMessage(keptnContext, `For onboarding a service, a values or manifest object must be available in the data block.`);
     }
+  }
+
+  private async addBlueGreenValues(repo: any, valuesObj: any, serviceName: string, stage: any) {
+    const bgValues = valuesObj;
+
+    // update values file
+    bgValues[`${serviceName}Blue`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
+    bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
+
+    if (bgValues[`${serviceName}Blue`].service) {
+      bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
+    }
+
+    if (bgValues[`${serviceName}Green`].service) {
+      bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
+    }
+
+    await repo.writeFile(
+      stage.name,
+      `helm-chart/values.yaml`,
+      YAML.stringify(bgValues, 100).replace(/\'/g, ''),
+      `[keptn]: Added blue/green values`,
+      { encode: true });
   }
 
   private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, service: ServiceModel) {
@@ -576,9 +598,10 @@ export class GitHubService {
     }
   }
 
-  async createIstioEntry(repo: any, project: string, serviceKey: string, serviceName: string, branch: string, chartName: string, istioIngressGatewayService: any) {
-    // create destination rule
+  async createDestinationRule(repo: any, serviceName: string, branch: string, chartName: string) {
     let destinationRuleTpl = await utils.readFileContent(GitHubService.destinationRuleTplFile);
+    const serviceKey = decamelize(serviceName, '-');
+
     destinationRuleTpl = Mustache.render(destinationRuleTpl, {
       serviceName: serviceKey,
       chartName,
@@ -590,15 +613,18 @@ export class GitHubService {
       destinationRuleTpl,
       `[keptn]: Added istio destination rule for ${serviceName}.`,
       { encode: true });
+  }
 
-    // create istio virtual service
+  async createVirtualService(repo: any, project: string, serviceName: string, branch: string, chartName: string, gateway: any) {
     let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFile);
+    const serviceKey = decamelize(serviceName, '-');
+
     virtualServiceTpl = Mustache.render(virtualServiceTpl, {
       application: project,
       serviceName: serviceKey,
       chartName,
       environment: branch,
-      ingressGatewayIP: istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip,
+      ingressGatewayIP: gateway.body.status.loadBalancer.ingress[0].ip,
     });
     await repo.writeFile(
       branch,
@@ -608,7 +634,9 @@ export class GitHubService {
       { encode: true });
   }
 
-  async createBlueGreenDeployment(repo: any, serviceName: string, decamelizedServiceName: string, branch: string, templateContent: any, template: any) {
+  async createBlueGreenDeployment(repo: any, serviceName: string, branch: string, templateContent: any, template: any) {
+    const decamelizedServiceName = decamelize(serviceName, '-');
+
     const serviceRegex = new RegExp(serviceName, 'g');
     const nameRegex = new RegExp(`name: ${decamelizedServiceName}`, 'g');
     const dplyRegex = new RegExp(`deployment: ${decamelizedServiceName}`, 'g');
