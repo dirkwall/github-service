@@ -98,10 +98,10 @@ export class GitHubService {
 
       const virtualService = await this.getVirtualService(repo, config);
 
-      const freeColor: string = this.getFreeColor(virtualService);
+      const freeColor: string = this.getFreeColor(virtualService, keptnContext);
       valuesObj[`${serviceName}${freeColor}`].image.tag = tag;
 
-      const activeColor: string = this.getActiveColor(virtualService);
+      const activeColor: string = this.getActiveColor(virtualService, keptnContext);
       if (valuesObj[`${serviceName}${activeColor}`].image.tag == null) {
         valuesObj[`${serviceName}${activeColor}`].image.tag = tag;
       }
@@ -179,7 +179,7 @@ export class GitHubService {
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        utils.logMessage(keptnContext, `Could not find shipyard file for project.` );
+        utils.logMessage(keptnContext, `Could not find shipyard file for project.`);
         console.log(e.message);
       } else {
         console.log(e.message);
@@ -197,32 +197,48 @@ export class GitHubService {
     return true;
   }
 
-  getFreeColor(virtualService: any): string {
+  getFreeColor(virtualService: any, keptnContext: string): string {
     let freeColor: string = 'Blue';
 
     if (virtualService.spec.http[0].route) {
-      if (virtualService.spec.http[0].route[0].destination.subset == 'blue' &&
-         virtualService.spec.http[0].route[0].weight === 100) {
-        freeColor = 'Green';
-      } else if (virtualService.spec.http[0].route[0].destination.subset == 'green' &&
-        virtualService.spec.http[0].route[0].weight === 100) {
+      if (virtualService.spec.http[0].route[0].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[0].weight === 0) {
         freeColor = 'Blue';
+      } else if (virtualService.spec.http[0].route[0].destination.subset === 'green' &&
+        virtualService.spec.http[0].route[0].weight === 0) {
+        freeColor = 'Green';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[1].weight === 0) {
+        freeColor = 'Blue';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'green' &&
+        virtualService.spec.http[0].route[1].weight === 0) {
+        freeColor = 'Green';
+      } else {
+        utils.logMessage(keptnContext, `Free color can't be determined. There is a wrong configuration in the virtual service configuration`);
       }
     }
 
     return freeColor;
   }
 
-  getActiveColor(virtualService: any): string {
+  getActiveColor(virtualService: any, keptnContext: string): string {
     let activeColor: string = 'Blue';
 
     if (virtualService.spec.http[0].route) {
-      if (virtualService.spec.http[0].route[0].destination.subset == 'blue' &&
-         virtualService.spec.http[0].route[0].weight === 100) {
+      if (virtualService.spec.http[0].route[0].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[0].weight === 100) {
         activeColor = 'Blue';
-      } else if (virtualService.spec.http[0].route[0].destination.subset == 'green' &&
+      } else if (virtualService.spec.http[0].route[0].destination.subset === 'green' &&
         virtualService.spec.http[0].route[0].weight === 100) {
         activeColor = 'Green';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'green' &&
+        virtualService.spec.http[0].route[1].weight === 100) {
+        activeColor = 'Green';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[1].weight === 100) {
+        activeColor = 'Blue';
+      } else {
+        utils.logMessage(keptnContext, `Active color can't be determined. There is a wrong configuration in the virtual service configuration`);
       }
     }
 
@@ -230,7 +246,7 @@ export class GitHubService {
   }
 
   async getVirtualService(repo: any, config: ConfigurationModel): Promise<any> {
-    const virtualSvcYaml = await repo.getContents(config.stage, 
+    const virtualSvcYaml = await repo.getContents(config.stage,
       `helm-chart/templates/istio-virtual-service-${config.service}.yaml`);
     const virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
     return virtualService;
@@ -242,11 +258,11 @@ export class GitHubService {
       if (virtualService.spec.http[0].route[0].weight === 100) {
         virtualService.spec.http[0].route[0].weight = 0;
         virtualService.spec.http[0].route[1].weight = 100;
-      } else if(virtualService.spec.http[0].route[1].weight === 100) {
+      } else if (virtualService.spec.http[0].route[1].weight === 100) {
         virtualService.spec.http[0].route[0].weight = 100;
         virtualService.spec.http[0].route[1].weight = 0;
       } else {
-        utils.logMessage(keptnContext, `The virtual service configuration does not support blue green.` );
+        utils.logMessage(keptnContext, `The virtual service configuration does not support blue green.`);
         return false;
       }
     }
@@ -263,6 +279,7 @@ export class GitHubService {
 
   async createProject(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
     const shipyard: ShipyardModel = cloudEvent.data;
+    shipyard.project = shipyard.project.toLowerCase();
     const keptnContext: string = cloudEvent.shkeptncontext;
 
     utils.logMessage(keptnContext, `Start to create project ${shipyard.project}.`);
