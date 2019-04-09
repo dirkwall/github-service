@@ -36,7 +36,7 @@ To onboard a service to a keptn project (i.e., to add a service's configuration 
 
 After extracting the configuration from the event payload, the functionality takes care of adding it to each stage (i.e., branch) of the project. For instance, the configuration will be added to the *dev*, *staging*, and *production* branch in case of a three-staged environment.
 
-## Regularly maintaining configuration changes
+## Maintaining configuration changes
 Regularly maintaining configuration changes means that the service listens to CloudEvents from type `sh.keptn.events.new-artefact`. This event contains the entire information for updating the configuration of a service in a particular stage. After a successful update, the service sends out a CloudEvent from type `sh.keptn.events.configuration-changed`.
 
 ## Install service
