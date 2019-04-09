@@ -3,7 +3,7 @@
 This service is designed to allow keptn the implementation of the GitOps approach, which is one of keptn's core principles. The GitOps approach has become a best practice for managing applications and the whole Cloud-native stack by using Git as the source of truth. In other words, the configurations of the applications and the environment are maintained within a Git repository and always represents the desired state of the target environment (e.g., your Kubernetes cluster). To take full advantage of this approach, keptn relies on functionality such as creating the repository, adding configuration files, and changing these files. This functionality is implemented in this service and can be distinguished into three groups explained below:
 1. Configuration of the service
 1. Creating a project and onboarding a service
-1. Regularly maintaining configuration changes
+1. Maintaining configuration changes
 
 From a technical perspective, the service is implemented in TypeScript on top of the Express framework. On the POST endpoint, the service receives requests that need to contain a valid CloudEvent in their body. The following list of CloudEvent types are supported by the service:
 * *configure*
