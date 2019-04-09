@@ -97,9 +97,14 @@ export class GitHubService {
       valuesObj[`${serviceName}Green`].image.repository = repository;
 
       const virtualService = await this.getVirtualService(repo, config);
-      const freeColor: string = this.getFreeColor(virtualService);
 
+      const freeColor: string = this.getFreeColor(virtualService);
       valuesObj[`${serviceName}${freeColor}`].image.tag = tag;
+
+      const activeColor: string = this.getActiveColor(virtualService);
+      if (valuesObj[`${serviceName}${activeColor}`].image.tag == null) {
+        valuesObj[`${serviceName}${activeColor}`].image.tag = tag;
+      }
 
       switched = await this.switchBlueGreen(repo, config, virtualService, keptnContext);
     }
@@ -199,13 +204,29 @@ export class GitHubService {
       if (virtualService.spec.http[0].route[0].destination.subset == 'blue' &&
          virtualService.spec.http[0].route[0].weight === 100) {
         freeColor = 'Green';
-      } else if(virtualService.spec.http[0].route[0].destination.subset == 'green' &&
+      } else if (virtualService.spec.http[0].route[0].destination.subset == 'green' &&
         virtualService.spec.http[0].route[0].weight === 100) {
         freeColor = 'Blue';
       }
     }
 
     return freeColor;
+  }
+
+  getActiveColor(virtualService: any): string {
+    let activeColor: string = 'Blue';
+
+    if (virtualService.spec.http[0].route) {
+      if (virtualService.spec.http[0].route[0].destination.subset == 'blue' &&
+         virtualService.spec.http[0].route[0].weight === 100) {
+        activeColor = 'Blue';
+      } else if (virtualService.spec.http[0].route[0].destination.subset == 'green' &&
+        virtualService.spec.http[0].route[0].weight === 100) {
+        activeColor = 'Green';
+      }
+    }
+
+    return activeColor;
   }
 
   async getVirtualService(repo: any, config: ConfigurationModel): Promise<any> {
