@@ -259,11 +259,10 @@ export class GitHubService {
         console.log(e.message);
       }
     }
-    return null;
+    return undefined;
   }
 
   async switchBlueGreen(repo: any, config: ConfigurationModel, virtualService: any, keptnContext: string): Promise<boolean> {
-
     if (virtualService.spec.http[0].route) {
       if (virtualService.spec.http[0].route[0].weight === 100) {
         virtualService.spec.http[0].route[0].weight = 0;
