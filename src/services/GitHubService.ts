@@ -137,6 +137,8 @@ export class GitHubService {
           utils.logMessage(keptnContext, `Change configuration for ${config.service} in project ${config.project}, stage ${config.stage}.`);
 
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
+          utils.logMessage(keptnContext, `Found helm-chart/values.yaml`);
+
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
@@ -148,7 +150,8 @@ export class GitHubService {
               const newConfig: ConfigurationModel = config;
 
               if (shipyardObj.stages[j].name === config.stage) {
-
+                
+                utils.logMessage(keptnContext, `Set values for new configuration.`);
                 newConfig.githuborg = orgName;
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
