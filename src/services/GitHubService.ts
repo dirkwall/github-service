@@ -96,7 +96,7 @@ export class GitHubService {
       valuesObj[`${serviceName}Blue`].image.repository = repository;
       valuesObj[`${serviceName}Green`].image.repository = repository;
 
-      const virtualService = await this.getVirtualService(repo, config);
+      const virtualService = await this.getVirtualService(repo, config, keptnContext);
 
       const freeColor: string = this.getFreeColor(virtualService, keptnContext);
       valuesObj[`${serviceName}${freeColor}`].image.tag = tag;
@@ -137,7 +137,6 @@ export class GitHubService {
           utils.logMessage(keptnContext, `Change configuration for ${config.service} in project ${config.project}, stage ${config.stage}.`);
 
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
-          utils.logMessage(keptnContext, `Found helm-chart/values.yaml`);
 
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
@@ -150,8 +149,6 @@ export class GitHubService {
               const newConfig: ConfigurationModel = config;
 
               if (shipyardObj.stages[j].name === config.stage) {
-                
-                utils.logMessage(keptnContext, `Set values for new configuration.`);
                 newConfig.githuborg = orgName;
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
@@ -248,11 +245,21 @@ export class GitHubService {
     return activeColor;
   }
 
-  async getVirtualService(repo: any, config: ConfigurationModel): Promise<any> {
-    const virtualSvcYaml = await repo.getContents(config.stage,
-      `helm-chart/templates/istio-virtual-service-${config.service}.yaml`);
-    const virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
-    return virtualService;
+  async getVirtualService(repo: any, config: ConfigurationModel, keptnContext: string): Promise<any> {
+    try {
+      const virtualSvcYaml = await repo.getContents(config.stage,
+        `helm-chart/templates/istio-virtual-service-${config.service}.yaml`);
+      const virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
+      return virtualService;
+    } catch (e) {
+      if (e.response && e.response.statusText === 'Not Found') {
+        utils.logMessage(keptnContext, `Could not find istio-virtual-service for ${config.service}.`);
+        console.log(e.message);
+      } else {
+        console.log(e.message);
+      }
+    }
+    return null;
   }
 
   async switchBlueGreen(repo: any, config: ConfigurationModel, virtualService: any, keptnContext: string): Promise<boolean> {
@@ -271,7 +278,7 @@ export class GitHubService {
     }
 
     const result = await repo.writeFile(
-      config.stage, 
+      config.stage,
       `helm-chart/templates/istio-virtual-service-${config.service}.yaml`,
       YAML.stringify(virtualService, 100).replace(/\'/g, ''),
       `[keptn]: Switched blue green`,
