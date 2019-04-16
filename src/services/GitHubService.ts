@@ -253,7 +253,7 @@ export class GitHubService {
       return virtualService;
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        utils.logMessage(keptnContext, `Could not find istio-virtual-service for ${config.service}.`);
+        utils.logMessage(keptnContext, `Could not find istio-virtual-service for ${config.service} in project: ${config.project}, stage: ${config.stage}.`);
         console.log(e.message);
       } else {
         console.log(e.message);
