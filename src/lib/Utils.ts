@@ -8,11 +8,20 @@ class Utils {
     return String(fs.readFileSync(filePath));
   }
 
-  logMessage(keptnContext: string, message: string) {
+  logInfoMessage(keptnContext: string, message: string) {
     console.log(JSON.stringify({ 
       keptnContext: keptnContext,
       keptnService: 'github-service',
       logLevel: 'INFO',
+      message: message,
+    }));
+  }
+
+  logErrorMessage(keptnContext: string, message: string) {
+    console.log(JSON.stringify({ 
+      keptnContext: keptnContext,
+      keptnService: 'github-service',
+      logLevel: 'ERROR',
       message: message,
     }));
   }

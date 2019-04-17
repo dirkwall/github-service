@@ -114,8 +114,6 @@ export class GitHubService {
       YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
       `[keptn]:${serviceName}:${config.image}`,
       { encode: true });
-    
-    utils.logMessage(keptnContext, `Status: ${result.statusText} Switched ${switched}`);
 
     return (result.statusText === 'OK') && switched;
   }
@@ -136,7 +134,7 @@ export class GitHubService {
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
         if (config.stage) {
-          utils.logMessage(keptnContext, `Change configuration for ${config.service} in project ${config.project}, stage ${config.stage}.`);
+          utils.logInfoMessage(keptnContext, `Change configuration for ${config.service} in project ${config.project}, stage ${config.stage}.`);
 
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
 
@@ -145,7 +143,7 @@ export class GitHubService {
 
           // service not availalbe in values file
           if (valuesObj[camelize(config.service)] === undefined) {
-            utils.logMessage(keptnContext, 'Service not available.');
+            utils.logInfoMessage(keptnContext, 'Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
               const newConfig: ConfigurationModel = config;
@@ -163,27 +161,27 @@ export class GitHubService {
                   keptnContext);
 
                 if (updated) {
-                  utils.logMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
-                  utils.logMessage(keptnContext, 'Send configuration changed event.');
+                  utils.logInfoMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
+                  utils.logInfoMessage(keptnContext, 'Send configuration changed event.');
 
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig, keptnContext);
 
-                  utils.logMessage(keptnContext, 'Configuration changed event sent.');
+                  utils.logInfoMessage(keptnContext, 'Configuration changed event sent.');
                 } else {
-                  utils.logMessage(keptnContext, `Updating the configuration failed - no configuration changed event sent.`);
+                  utils.logErrorMessage(keptnContext, `Updating the configuration failed - no configuration changed event sent.`);
                 }
               }
             }
           }
         } else {
-          utils.logMessage(keptnContext, 'No stage to apply changes to.');
+          utils.logInfoMessage(keptnContext, 'No stage to apply changes to.');
         }
       } else {
-        utils.logMessage(keptnContext, 'Project or tag not defined.');
+        utils.logInfoMessage(keptnContext, 'Project or tag not defined.');
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        utils.logMessage(keptnContext, `Could not find shipyard file for project.`);
+        utils.logErrorMessage(keptnContext, `Could not find shipyard file for project ${config.project}.`);
         console.log(e.message);
       } else {
         console.log(e.message);
@@ -218,7 +216,7 @@ export class GitHubService {
         virtualService.spec.http[0].route[1].weight === 0) {
         freeColor = 'Green';
       } else {
-        utils.logMessage(keptnContext, `Free color can't be determined. There is a wrong configuration in the virtual service configuration`);
+        utils.logInfoMessage(keptnContext, `Free color can't be determined. There is a wrong configuration in the virtual service configuration`);
       }
     }
 
@@ -242,7 +240,7 @@ export class GitHubService {
         virtualService.spec.http[0].route[1].weight === 100) {
         activeColor = 'Blue';
       } else {
-        utils.logMessage(keptnContext, `Active color can't be determined. There is a wrong configuration in the virtual service configuration`);
+        utils.logInfoMessage(keptnContext, `Active color can't be determined. There is a wrong configuration in the virtual service configuration`);
       }
     }
 
@@ -257,7 +255,7 @@ export class GitHubService {
       return virtualService;
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        utils.logMessage(keptnContext, `Could not find istio-virtual-service for ${config.service} in project: ${config.project}, stage: ${config.stage}.`);
+        utils.logErrorMessage(keptnContext, `Could not find istio-virtual-service for ${config.service} in project: ${config.project}, stage: ${config.stage}.`);
         console.log(e.message);
       } else {
         console.log(e.message);
@@ -275,7 +273,7 @@ export class GitHubService {
         virtualService.spec.http[0].route[0].weight = 100;
         virtualService.spec.http[0].route[1].weight = 0;
       } else {
-        utils.logMessage(keptnContext, `The virtual service configuration does not support blue green.`);
+        utils.logInfoMessage(keptnContext, `The virtual service configuration does not support blue green.`);
         return false;
       }
     }
@@ -295,7 +293,7 @@ export class GitHubService {
     shipyard.project = shipyard.project.toLowerCase();
     const keptnContext: string = cloudEvent.shkeptncontext;
 
-    utils.logMessage(keptnContext, `Start to create project ${shipyard.project}.`);
+    utils.logInfoMessage(keptnContext, `Start to create project ${shipyard.project}.`);
 
     const created: boolean = await this.createRepository(orgName, shipyard, keptnContext);
     if (created) {
@@ -308,7 +306,7 @@ export class GitHubService {
       await this.createBranchesForEachStages(repo, shipyard, keptnContext);
       await this.addShipyardToMaster(repo, shipyard, keptnContext);
 
-      utils.logMessage(keptnContext, `Project ${shipyard.project} created.`);
+      utils.logInfoMessage(keptnContext, `Project ${shipyard.project} created.`);
     }
     return created;
   }
@@ -324,7 +322,7 @@ export class GitHubService {
       deleted = await repo.deleteRepo();
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        utils.logMessage(keptnContext, `Could not find repository ${shipyard.project}.`);
+        utils.logErrorMessage(keptnContext, `Could not find repository ${shipyard.project}.`);
         console.log(e.message);
       }
     }
@@ -340,12 +338,12 @@ export class GitHubService {
     } catch (e) {
       if (e.response) {
         if (e.response.statusText === 'Not Found') {
-          utils.logMessage(keptnContext, `Could not find organziation ${orgName}.`);
+          utils.logErrorMessage(keptnContext, `Could not find organziation ${orgName}.`);
         } else if (e.response.statusText === 'Unprocessable Entity') {
-          utils.logMessage(keptnContext, `Repository ${shipyard.project} already available.`);
+          utils.logInfoMessage(keptnContext, `Repository ${shipyard.project} already available.`);
         }
       }
-      utils.logMessage(keptnContext, `Error: ${e.message}`);
+      utils.logErrorMessage(keptnContext, `Error: ${e.message}`);
       return false;
     }
     return true;
@@ -359,7 +357,7 @@ export class GitHubService {
         `# keptn takes care of your ${shipyard.project}`,
         '[keptn]: Initial commit', { encode: true });
     } catch (e) {
-      utils.logMessage(keptnContext, `Initial commit failed.`);
+      utils.logErrorMessage(keptnContext, `Initial commit failed.`);
       console.log(e.message);
     }
   }
@@ -407,7 +405,7 @@ export class GitHubService {
         }
       });
     } catch (e) {
-      utils.logMessage(keptnContext, `Creating branches failed.`);
+      utils.logErrorMessage(keptnContext, `Creating branches failed.`);
       console.log(e.message);
     }
   }
@@ -422,7 +420,7 @@ export class GitHubService {
         { encode: true });
 
     } catch (e) {
-      utils.logMessage(keptnContext, `Adding shipyard to master failed.`);
+      utils.logErrorMessage(keptnContext, `Adding shipyard to master failed.`);
       console.log(e.message);
     }
   }
@@ -439,10 +437,10 @@ export class GitHubService {
       } else if (service.manifest) {
         serviceName = service.manifest.applications[0].name;
       } else {
-        utils.logMessage(keptnContext, `Manifest type not implemented.`);
+        utils.logInfoMessage(keptnContext, `Manifest type not implemented.`);
       }
 
-      utils.logMessage(keptnContext, `Start onboarding of service ${serviceName}.`);
+      utils.logInfoMessage(keptnContext, `Start onboarding of service ${serviceName}.`);
 
       try {
         const repo = await gh.getRepo(orgName, service.project);
@@ -463,19 +461,19 @@ export class GitHubService {
 
           // service already defined in helm chart
           if (valuesObj[serviceName] !== undefined) {
-            utils.logMessage(keptnContext, `Service already available in stage: ${stage.name}.`);
+            utils.logInfoMessage(keptnContext, `Service already available in stage: ${stage.name}.`);
           } else {
-            utils.logMessage(keptnContext, `Adding artifacts to: ${stage.name}.`);
+            utils.logInfoMessage(keptnContext, `Adding artifacts to: ${stage.name}.`);
             await this.addArtifactsToBranch(repo, service, stage, valuesObj, chartName, keptnContext);
-            utils.logMessage(keptnContext, `Service onboarded to: ${stage.name}.`);
+            utils.logInfoMessage(keptnContext, `Service onboarded to: ${stage.name}.`);
           }
         }));
       } catch (e) {
-        utils.logMessage(keptnContext, `Onboarding service failed.`);
+        utils.logErrorMessage(keptnContext, `Onboarding service failed.`);
         console.log(e.message);
       }
     } else {
-      utils.logMessage(keptnContext, `CloudEvent does not contain data.values.`);
+      utils.logInfoMessage(keptnContext, `CloudEvent does not contain data.values.`);
     }
   }
 
@@ -579,7 +577,7 @@ export class GitHubService {
         { encode: true });
 
     } else {
-      utils.logMessage(keptnContext, `For onboarding a service, a values or manifest object must be available in the data block.`);
+      utils.logInfoMessage(keptnContext, `For onboarding a service, a values or manifest object must be available in the data block.`);
     }
   }
 
@@ -746,10 +744,10 @@ export class GitHubService {
           insecure_ssl: 1,
         },
       });
-      utils.logMessage(keptnContext, `Webhook http://${eventBrokerUri}/github activated.`);
+      utils.logInfoMessage(keptnContext, `Webhook http://${eventBrokerUri}/github activated.`);
 
     } catch (e) {
-      utils.logMessage(keptnContext, `Setting webhook failed.`);
+      utils.logErrorMessage(keptnContext, `Setting webhook failed.`);
       console.log(e.message);
     }
   }
