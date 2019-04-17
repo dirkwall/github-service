@@ -114,6 +114,8 @@ export class GitHubService {
       YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
       `[keptn]:${serviceName}:${config.image}`,
       { encode: true });
+    
+    utils.logMessage(keptnContext, `Status: ${result.statusText} Switched ${switched}`);
 
     return (result.statusText === 'OK') && switched;
   }
@@ -159,6 +161,8 @@ export class GitHubService {
                   config,
                   shipyardObj.stages[j].deployment_strategy,
                   keptnContext);
+
+                utils.logMessage(keptnContext, `Updated: ${updated}`);
 
                 if (updated) {
                   utils.logMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
