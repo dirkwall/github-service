@@ -106,7 +106,7 @@ export class GitHubService {
         valuesObj[`${serviceName}${activeColor}`].image.tag = tag;
       }
 
-      switched = await this.switchBlueGreen(repo, config, virtualService, keptnContext);
+      switched = await this.switchBlueGreen(repo, config, serviceName, virtualService, keptnContext);
     }
 
     const result = await repo.writeFile(
@@ -266,7 +266,7 @@ export class GitHubService {
     return undefined;
   }
 
-  async switchBlueGreen(repo: any, config: ConfigurationModel, virtualService: any, keptnContext: string): Promise<boolean> {
+  async switchBlueGreen(repo: any, config: ConfigurationModel, serviceName: string, virtualService: any, keptnContext: string): Promise<boolean> {
     if (virtualService.spec.http[0].route) {
       if (virtualService.spec.http[0].route[0].weight === 100) {
         virtualService.spec.http[0].route[0].weight = 0;
@@ -282,7 +282,7 @@ export class GitHubService {
 
     const result = await repo.writeFile(
       config.stage,
-      `helm-chart/templates/istio-virtual-service-${config.service}.yaml`,
+      `helm-chart/templates/istio-virtual-service-${serviceName}.yaml`,
       YAML.stringify(virtualService, 100).replace(/\'/g, ''),
       `[keptn]: Switched blue green`,
       { encode: true });
