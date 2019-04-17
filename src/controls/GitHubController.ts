@@ -77,7 +77,7 @@ export class GitHubController implements interfaces.Controller {
 
     } else {
       if (request.body.shkeptncontext ) {
-        utils.logMessage(request.body.shkeptncontext,
+        utils.logInfoMessage(request.body.shkeptncontext,
           `This service does not handle the event type ${request.body.eventType}.`);
       }
     }

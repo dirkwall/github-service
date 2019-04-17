@@ -75,17 +75,17 @@ export class CredentialsService {
     const gitCreds: CredentialsModel = cloudEvent.data;
     const keptnContext: string = cloudEvent.shkeptncontext;
     
-    utils.logMessage(keptnContext, `Start secret creation.`);
+    utils.logInfoMessage(keptnContext, `Start secret creation.`);
 
     if (gitCreds !== undefined && gitCreds.org && gitCreds.token && gitCreds.user) {
       const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(gitCreds);
       const updatedSecret: CredentialsSecret = await this.updateGithubCredentials(secret, keptnContext);
       if (updatedSecret !== undefined) {
         updated = true;
-        utils.logMessage(keptnContext, `Secret created.`);
+        utils.logInfoMessage(keptnContext, `Secret created.`);
       }
     } else {
-      utils.logMessage(keptnContext, `Org, token or user not set.`);
+      utils.logErrorMessage(keptnContext, `Org, token or user not set.`);
     }
     return updated;
   }
@@ -101,7 +101,7 @@ export class CredentialsService {
       if (apiToken && apiToken.data !== undefined) {
         token = base64decode(apiToken.data['keptn-api-token']);
       } else {
-        utils.logMessage(keptnContext, `The secret does not contain the proper information.`);
+        utils.logInfoMessage(keptnContext, `The secret does not contain the proper information.`);
       }
     }
 
@@ -122,7 +122,7 @@ export class CredentialsService {
         gitHubCredentials.user = base64decode(ghItem.data.user);
         gitHubCredentials.token = base64decode(ghItem.data.token);
       } else {
-        utils.logMessage(keptnContext, `The secret does not contain the proper information.`);
+        utils.logInfoMessage(keptnContext, `The secret does not contain the proper information.`);
       }
     }
 
@@ -136,7 +136,7 @@ export class CredentialsService {
         const deleteResult = await this.k8sClient.api.v1
           .namespaces('keptn').secrets('github-credentials').delete();
       } catch (e) {
-        utils.logMessage(keptnContext, `Can not delete credentials.`);
+        utils.logInfoMessage(keptnContext, `Can not delete credentials.`);
         console.log(e.message);
       }
       createdSecret = await this.k8sClient.api.v1.namespaces('keptn').secret.post({ body: secret });
