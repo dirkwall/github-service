@@ -247,8 +247,10 @@ export class GitHubService {
 
   async getVirtualService(repo: any, config: ConfigurationModel, keptnContext: string): Promise<any> {
     try {
+      const serviceName: string = camelize(config.service);
+
       const virtualSvcYaml = await repo.getContents(config.stage,
-        `helm-chart/templates/istio-virtual-service-${config.service}.yaml`);
+        `helm-chart/templates/istio-virtual-service-${serviceName}.yaml`);
       const virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
       return virtualService;
     } catch (e) {
