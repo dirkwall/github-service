@@ -10,7 +10,7 @@ import * as K8sApi from 'kubernetes-client';
 import { base64decode } from 'nodejs-base64';
 
 // Util class
-const utils = new Utils();
+const utils = Utils.getInstance();
 
 export class CredentialsService {
 

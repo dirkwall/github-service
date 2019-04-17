@@ -23,7 +23,7 @@ const Mustache = require('mustache');
 const YAML = require('yamljs');
 
 // Util class
-const utils = new Utils();
+const utils = Utils.getInstance();
 
 // Basic authentication
 let gh;

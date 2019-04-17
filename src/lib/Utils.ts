@@ -1,29 +1,59 @@
 import { K8sClientFactory } from './K8sClientFactory';
 import { K8sServiceInfo } from '../types/K8sServiceInfo';
+import { LoggingService } from '../services/LoggingService';
 
 const fs = require('fs');
 
 class Utils {
+  private static instance;
+
+  private wsLogger: LoggingService;
+
+  private constructor() {
+
+  }
+
+  static getInstance(): Utils {
+    if (Utils.instance === undefined) {
+      Utils.instance = new Utils();
+    }
+    return Utils.instance;
+  }
+
   readFileContent(filePath: string) {
     return String(fs.readFileSync(filePath));
   }
 
-  logInfoMessage(keptnContext: string, message: string) {
-    console.log(JSON.stringify({ 
-      keptnContext: keptnContext,
-      keptnService: 'github-service',
-      logLevel: 'INFO',
-      message: message,
-    }));
+  setWsLogger(wsLogger: LoggingService) {
+    Utils.instance.wsLogger = wsLogger;
   }
 
-  logErrorMessage(keptnContext: string, message: string) {
-    console.log(JSON.stringify({ 
-      keptnContext: keptnContext,
+  logInfoMessage(keptnContext: string, message: string, terminate: boolean = false) {
+    const msg = JSON.stringify({
+      keptnContext,
+      message,
+      keptnService: 'github-service',
+      logLevel: 'INFO',
+    });
+    console.log(msg);
+
+    if (this.wsLogger !== undefined) {
+      this.wsLogger.logMessage(msg, terminate);
+    }
+  }
+
+  logErrorMessage(keptnContext: string, message: string, terminate: boolean = false) {
+    const msg = JSON.stringify({
+      keptnContext,
+      message,
       keptnService: 'github-service',
       logLevel: 'ERROR',
-      message: message,
-    }));
+    });
+    console.log(msg);
+
+    if (this.wsLogger !== undefined) {
+      this.wsLogger.logMessage(msg, terminate);
+    }
   }
 
   async getK8sServiceUrl(serviceName, namespace): Promise<K8sServiceInfo> {
@@ -31,7 +61,7 @@ class Utils {
     const service =
       await k8sClient.api.v1.namespace(namespace).service(serviceName).get();
 
-      return service as K8sServiceInfo;
+    return service as K8sServiceInfo;
   }
 }
 
