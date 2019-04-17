@@ -162,8 +162,6 @@ export class GitHubService {
                   shipyardObj.stages[j].deployment_strategy,
                   keptnContext);
 
-                utils.logMessage(keptnContext, `Updated: ${updated}`);
-
                 if (updated) {
                   utils.logMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
                   utils.logMessage(keptnContext, 'Send configuration changed event.');
@@ -171,6 +169,8 @@ export class GitHubService {
                   await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig, keptnContext);
 
                   utils.logMessage(keptnContext, 'Configuration changed event sent.');
+                } else {
+                  utils.logMessage(keptnContext, `Updating the configuration failed - no configuration changed event sent.`);
                 }
               }
             }
