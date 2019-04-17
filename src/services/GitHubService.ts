@@ -96,7 +96,7 @@ export class GitHubService {
       valuesObj[`${serviceName}Blue`].image.repository = repository;
       valuesObj[`${serviceName}Green`].image.repository = repository;
 
-      const virtualService = await this.getVirtualService(repo, config, keptnContext);
+      const virtualService = await this.getVirtualService(repo, config, serviceName, keptnContext);
 
       const freeColor: string = this.getFreeColor(virtualService, keptnContext);
       valuesObj[`${serviceName}${freeColor}`].image.tag = tag;
@@ -245,10 +245,8 @@ export class GitHubService {
     return activeColor;
   }
 
-  async getVirtualService(repo: any, config: ConfigurationModel, keptnContext: string): Promise<any> {
+  async getVirtualService(repo: any, config: ConfigurationModel, serviceName: string, keptnContext: string): Promise<any> {
     try {
-      const serviceName: string = camelize(config.service);
-
       const virtualSvcYaml = await repo.getContents(config.stage,
         `helm-chart/templates/istio-virtual-service-${serviceName}.yaml`);
       const virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
