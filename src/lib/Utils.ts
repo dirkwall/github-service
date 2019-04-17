@@ -38,7 +38,7 @@ class Utils {
     console.log(msg);
 
     if (this.wsLogger !== undefined) {
-      this.wsLogger.logMessage(msg, terminate);
+      this.wsLogger.logMessage(keptnContext, message, terminate);
     }
   }
 
@@ -52,7 +52,7 @@ class Utils {
     console.log(msg);
 
     if (this.wsLogger !== undefined) {
-      this.wsLogger.logMessage(msg, terminate);
+      this.wsLogger.logMessage(keptnContext, message, terminate);
     }
   }
 

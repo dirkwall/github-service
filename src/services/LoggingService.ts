@@ -32,10 +32,11 @@ export class LoggingService {
     });
   }
 
-  logMessage(message: string, terminate: boolean): void {
+  logMessage(keptnContext: string, message: string, terminate: boolean = false): void {
     if (this.webSocket !== undefined) {
       const logEvent = new KeptnRequestModel();
       logEvent.type = KeptnRequestModel.EVENT_TYPES.LOG;
+      logEvent.shkeptncontext = keptnContext;
       logEvent.data = {
         message,
         terminate,
