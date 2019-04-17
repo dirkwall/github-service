@@ -57,7 +57,7 @@ export class GitHubController implements interfaces.Controller {
     response: express.Response,
     next: express.NextFunction,
   ): Promise<void> {
-
+    console.log(JSON.stringify(request.body, null, 2));
     if (request.body.data.channelInfo !== undefined) {
       const wsLogger = new LoggingService();
       await wsLogger.connect(request.body.data.channelInfo);

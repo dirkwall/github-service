@@ -37,7 +37,6 @@ server.setConfig((app: any) => {
           ),
     );
   app.use(bodyParser.json());
-  // app.use(RequestLogger);
   app.use(
     swagger.express({
       definition: {
