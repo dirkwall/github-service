@@ -15,6 +15,10 @@ describe('CredentialsService', () => {
     credService = CredentialsService.getInstance();
   });
 
+  it('Add entry for registry', async () => {
+    credService.addRegistryEntry('registry', 'project');
+  }).timeout(5000);
+
   it('Should return the credentials from a K8s secret', async () => {
     const gitCreds : CredentialsModel = await credService.getGithubCredentials();
     expect(gitCreds.org).to.be.a('string');

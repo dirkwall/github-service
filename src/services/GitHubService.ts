@@ -4,6 +4,7 @@ import { ServiceModel } from '../types/ServiceModel';
 import { Stage, ShipyardModel } from '../types/ShipyardModel';
 import { CredentialsModel } from '../types/CredentialsModel';
 import { ConfigurationModel } from '../types/ConfigurationModel';
+import { KeptnCloudEvent } from '../types/KeptnCloudEvent';
 import { KeptnRequestModel } from '../types/KeptnRequestModel';
 import { TreeModel , TreeItem } from '../types/TreeModel';
 
@@ -16,7 +17,7 @@ import { LoggingService } from './LoggingService';
 import axios  from 'axios';
 
 const decamelize = require('decamelize');
-const camelize = require('camelize')
+const camelize = require('camelize');
 const GitHub = require('github-api');
 const Mustache = require('mustache');
 const YAML = require('yamljs');
@@ -35,24 +36,28 @@ export class GitHubService {
 
   private static gatewayTplFile: string = './templates/istio-manifests/gateway.tpl';
   private static destinationRuleTplFile: string = './templates/istio-manifests/destination_rule.tpl';
-  private static virtualServiceTplFile: string = './templates/istio-manifests/virtual_service.tpl';
+  private static virtualServiceTplFileDirect: string = './templates/istio-manifests/virtual_service_direct.tpl';
+  private static virtualServiceTplFileBlueGreen: string = './templates/istio-manifests/virtual_service_blue_green.tpl';
   private static deploymentTplFile: string = './templates/service-template/deployment.tpl';
   private static serviceTplFile: string = './templates/service-template/service.tpl';
 
   private constructor() {
   }
 
-  static async getInstance() : Promise<GitHubService> {
+  static async getInstance(): Promise<GitHubService> {
     if (GitHubService.instance === undefined) {
       GitHubService.instance = new GitHubService();
-      await this.updateCredentials();
+      await this.updateCredentials(undefined);
     }
     return GitHubService.instance;
   }
 
-  static async updateCredentials() {
+  static async updateCredentials(cloudEvent: KeptnCloudEvent) {
     const credService: CredentialsService = CredentialsService.getInstance();
-    const githubCreds: CredentialsModel = await credService.getGithubCredentials();
+    let keptnContext = 'undefined';
+    if (cloudEvent) { keptnContext = cloudEvent.shkeptncontext; }
+
+    const githubCreds: CredentialsModel = await credService.getGithubCredentials(keptnContext);
     GitHubService.gitHubOrg = githubCreds.org;
 
     gh = new GitHub({
@@ -62,78 +67,67 @@ export class GitHubService {
     });
   }
 
-  getCurrentStage(shipyardObj : any, stage : string) : string {
-    let currentStage = undefined;
+  getCurrentStage(shipyardObj: any, stage: string): string {
+    let currentStage: string = undefined;
 
-    if (stage === undefined || stage === '') {
+    if (stage === undefined || stage === '' || stage === null) {
       currentStage = shipyardObj.stages[0].name;
     } else {
       for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
-        if (shipyardObj.stages[j].name === stage && j+1 < shipyardObj.stages.length) {
-          currentStage = shipyardObj.stages[j+1].name;
+        if (shipyardObj.stages[j].name === stage && j + 1 < shipyardObj.stages.length) {
+          currentStage = shipyardObj.stages[j + 1].name;
         }
       }
     }
-
     return currentStage;
   }
 
-  async updateValuesFile(repo : any, valuesObj : any, config : ConfigurationModel, deploymentStrategy: string) : Promise<boolean>{
-    let updated = false;
+  async updateValuesFile(repo: any, valuesObj: any, config: ConfigurationModel, deploymentStrategy: string, keptnContext): Promise<boolean>{
+    let switched: boolean = true;
 
-    const repository : string = config.image;
-    const tag : string = config.tag;
+    const repository: string = config.image;
+    const tag: string = config.tag;
 
-    const serviceName : string = camelize(config.service);
+    const serviceName: string = camelize(config.service);
 
     if (deploymentStrategy === 'direct') {
       valuesObj[serviceName].image.repository = repository;
       valuesObj[serviceName].image.tag = tag;
 
-      const result = await repo.writeFile(
-        config.stage, 'helm-chart/values.yaml',
-        YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${serviceName}:${config.image}`,
-        { encode: true });
-      if (result.statusText === 'OK') {
-        updated = true;
-      }
     } else if (deploymentStrategy === 'blue_green_service') {
       valuesObj[`${serviceName}Blue`].image.repository = repository;
       valuesObj[`${serviceName}Green`].image.repository = repository;
-      valuesObj[`${serviceName}Blue`].image.tag = tag;
-      valuesObj[`${serviceName}Green`].image.tag = tag;
 
-      const result = await repo.writeFile(
-        config.stage, 'helm-chart/values.yaml',
-        YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
-        `[keptn-config-change]:${serviceName}:${config.image}`,
-        { encode: true });
-      if (result.statusText === 'OK') {
-        updated = true;
+      const virtualService = await this.getVirtualService(repo, config, serviceName, keptnContext);
+
+      const freeColor: string = this.getFreeColor(virtualService, keptnContext);
+      valuesObj[`${serviceName}${freeColor}`].image.tag = tag;
+
+      const activeColor: string = this.getActiveColor(virtualService, keptnContext);
+      if (valuesObj[`${serviceName}${activeColor}`].image.tag == null) {
+        valuesObj[`${serviceName}${activeColor}`].image.tag = tag;
       }
+
+      switched = await this.switchBlueGreen(repo, config, serviceName, virtualService, keptnContext);
     }
-    return updated;
+
+    const result = await repo.writeFile(
+      config.stage, 'helm-chart/values.yaml',
+      YAML.stringify(valuesObj, 100).replace(/\'/g, ''),
+      `[keptn]:${serviceName}:${config.image}`,
+      { encode: true });
+
+    return (result.statusText === 'OK') && switched;
   }
 
-  async sendConfigChangedEvent(orgName : string, config : ConfigurationModel) : Promise<boolean> {
-    let sent : boolean = false;
-
-    config.githuborg = orgName;
-
-    const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
-    keptnEvent.data = config;
-    keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
-    await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
-
-    return sent;
-  }
-
-  async updateConfiguration(orgName : string, config : ConfigurationModel) : Promise<boolean> {
+  async updateConfiguration(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
     let updated: boolean = false;
-    try {
 
-      if (config.project) {
+    const config: ConfigurationModel = cloudEvent.data;
+    const keptnContext: string = cloudEvent.shkeptncontext;
+
+    try {
+      if (config.project && config.tag) {
         const repo = await gh.getRepo(orgName, config.project);
 
         const shipyardYaml = await repo.getContents('master', 'shipyard.yaml');
@@ -141,147 +135,223 @@ export class GitHubService {
 
         config.stage = this.getCurrentStage(shipyardObj, config.stage);
 
-        if (config.stage && config.tag) {
+        if (config.stage) {
+          utils.logInfoMessage(keptnContext, `Change configuration for ${config.service} in project ${config.project}, stage ${config.stage}.`);
+
           const valuesYaml = await repo.getContents(config.stage, 'helm-chart/values.yaml');
+
           let valuesObj = YAML.parse(base64decode(valuesYaml.data.content));
           if (valuesObj === undefined || valuesObj === null) { valuesObj = {}; }
 
           // service not availalbe in values file
           if (valuesObj[camelize(config.service)] === undefined) {
-            console.log('[github-service]: Service not available.');
+            utils.logInfoMessage(keptnContext, 'Service not available.');
           } else {
             for (let j = 0; j < shipyardObj.stages.length; j = j + 1) {
-              const newConfig : ConfigurationModel = config;
+              const newConfig: ConfigurationModel = config;
 
               if (shipyardObj.stages[j].name === config.stage) {
-
+                newConfig.githuborg = orgName;
                 newConfig.teststategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
+
                 updated = await this.updateValuesFile(
                   repo,
                   valuesObj,
                   config,
-                  shipyardObj.stages[j].deployment_strategy);
+                  shipyardObj.stages[j].deployment_strategy,
+                  keptnContext);
 
                 if (updated) {
-                  console.log('[github-service]: Send configuration changed event.');
-                  await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig);
-                  console.log('[github-service]: Configuration changed event sent.');
+                  utils.logInfoMessage(keptnContext, `Configuration changed for ${config.service} in project ${config.project}, stage ${config.stage}.`);
+                  utils.logInfoMessage(keptnContext, 'Send configuration changed event.');
+
+                  await this.sendConfigChangedEvent(GitHubService.gitHubOrg, newConfig, keptnContext);
+
+                  utils.logInfoMessage(keptnContext, 'Configuration changed event sent.');
+                } else {
+                  utils.logErrorMessage(keptnContext, `Updating the configuration failed - no configuration changed event sent.`);
                 }
               }
             }
           }
         } else {
-          console.log(`[github-service]: Tag not defined.`);
+          utils.logInfoMessage(keptnContext, 'No stage to apply changes to.');
         }
       } else {
-        console.log(`[github-service]: Project not defined.`);
+        utils.logInfoMessage(keptnContext, 'Project or tag not defined.');
       }
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[github-service]: Could not find shipyard file.`);
+        utils.logErrorMessage(keptnContext, `Could not find shipyard file for project ${config.project}.`);
+        console.log(e.message);
+      } else {
         console.log(e.message);
       }
     }
     return updated;
   }
 
-  async createProject(orgName : string, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<boolean> {
-    const created: boolean = await this.createRepository(orgName, shipyard, wsLogger);
+  async sendConfigChangedEvent(orgName: string, config: ConfigurationModel, keptnContext: string): Promise<boolean> {
+    const keptnEvent: KeptnRequestModel = new KeptnRequestModel();
+    keptnEvent.data = config;
+    keptnEvent.type = KeptnRequestModel.EVENT_TYPES.CONFIGURATION_CHANGED;
+    keptnEvent.shkeptncontext = keptnContext;
+    await axios.post('http://event-broker.keptn.svc.cluster.local/keptn', keptnEvent);
+    return true;
+  }
+
+  getFreeColor(virtualService: any, keptnContext: string): string {
+    let freeColor: string = 'Blue';
+
+    if (virtualService.spec.http[0].route) {
+      if (virtualService.spec.http[0].route[0].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[0].weight === 0) {
+        freeColor = 'Blue';
+      } else if (virtualService.spec.http[0].route[0].destination.subset === 'green' &&
+        virtualService.spec.http[0].route[0].weight === 0) {
+        freeColor = 'Green';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[1].weight === 0) {
+        freeColor = 'Blue';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'green' &&
+        virtualService.spec.http[0].route[1].weight === 0) {
+        freeColor = 'Green';
+      } else {
+        utils.logInfoMessage(keptnContext, `Free color can't be determined. There is a wrong configuration in the virtual service configuration`);
+      }
+    }
+
+    return freeColor;
+  }
+
+  getActiveColor(virtualService: any, keptnContext: string): string {
+    let activeColor: string = 'Blue';
+
+    if (virtualService.spec.http[0].route) {
+      if (virtualService.spec.http[0].route[0].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[0].weight === 100) {
+        activeColor = 'Blue';
+      } else if (virtualService.spec.http[0].route[0].destination.subset === 'green' &&
+        virtualService.spec.http[0].route[0].weight === 100) {
+        activeColor = 'Green';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'green' &&
+        virtualService.spec.http[0].route[1].weight === 100) {
+        activeColor = 'Green';
+      } else if (virtualService.spec.http[0].route[1].destination.subset === 'blue' &&
+        virtualService.spec.http[0].route[1].weight === 100) {
+        activeColor = 'Blue';
+      } else {
+        utils.logInfoMessage(keptnContext, `Active color can't be determined. There is a wrong configuration in the virtual service configuration`);
+      }
+    }
+
+    return activeColor;
+  }
+
+  async getVirtualService(repo: any, config: ConfigurationModel, serviceName: string, keptnContext: string): Promise<any> {
+    try {
+      const virtualSvcYaml = await repo.getContents(config.stage,
+        `helm-chart/templates/istio-virtual-service-${serviceName}.yaml`);
+      const virtualService = YAML.parse(base64decode(virtualSvcYaml.data.content));
+      return virtualService;
+    } catch (e) {
+      if (e.response && e.response.statusText === 'Not Found') {
+        utils.logErrorMessage(keptnContext, `Could not find istio-virtual-service for ${config.service} in project: ${config.project}, stage: ${config.stage}.`);
+        console.log(e.message);
+      } else {
+        console.log(e.message);
+      }
+    }
+    return undefined;
+  }
+
+  async switchBlueGreen(repo: any, config: ConfigurationModel, serviceName: string, virtualService: any, keptnContext: string): Promise<boolean> {
+    if (virtualService.spec.http[0].route) {
+      if (virtualService.spec.http[0].route[0].weight === 100) {
+        virtualService.spec.http[0].route[0].weight = 0;
+        virtualService.spec.http[0].route[1].weight = 100;
+      } else if (virtualService.spec.http[0].route[1].weight === 100) {
+        virtualService.spec.http[0].route[0].weight = 100;
+        virtualService.spec.http[0].route[1].weight = 0;
+      } else {
+        utils.logInfoMessage(keptnContext, `The virtual service configuration does not support blue green.`);
+        return false;
+      }
+    }
+
+    const result = await repo.writeFile(
+      config.stage,
+      `helm-chart/templates/istio-virtual-service-${serviceName}.yaml`,
+      YAML.stringify(virtualService, 100).replace(/\'/g, ''),
+      `[keptn]: Switched blue green`,
+      { encode: true });
+
+    return (result.statusText === 'OK');
+  }
+
+  async createProject(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
+    const shipyard: ShipyardModel = cloudEvent.data;
+    shipyard.project = shipyard.project.toLowerCase();
+    const keptnContext: string = cloudEvent.shkeptncontext;
+
+    utils.logInfoMessage(keptnContext, `Start to create project ${shipyard.project}.`);
+
+    const created: boolean = await this.createRepository(orgName, shipyard, keptnContext);
     if (created) {
       const repo = await gh.getRepo(orgName, shipyard.project);
 
-      await this.initialCommit(repo, shipyard, wsLogger);
-      await this.createBranchesForEachStages(repo, shipyard, wsLogger);
-      await this.addShipyardToMaster(repo, shipyard, wsLogger);
-      // TODO: WEBHOOK - await this.setHook(repo, shipyard);
+      const credService: CredentialsService = CredentialsService.getInstance();
+      await credService.addRegistryEntry(shipyard.registry, shipyard.project);
+
+      await this.initialCommit(repo, shipyard, keptnContext);
+      await this.createBranchesForEachStages(repo, shipyard, keptnContext);
+      await this.addShipyardToMaster(repo, shipyard, keptnContext);
+
+      utils.logInfoMessage(keptnContext, `Project ${shipyard.project} created.`);
     }
     return created;
   }
 
-  async deleteProject(orgName : string, shipyard : ShipyardModel) : Promise<boolean> {
-    let deleted = false;
+  async deleteProject(orgName: string, cloudEvent: KeptnCloudEvent): Promise<boolean> {
+    let deleted: boolean = false;
+
+    const shipyard: ShipyardModel = cloudEvent.data;
+    const keptnContext: string = cloudEvent.shkeptncontext;
+
     try {
       const repo = await gh.getRepo(shipyard.project);
       deleted = await repo.deleteRepo();
     } catch (e) {
       if (e.response && e.response.statusText === 'Not Found') {
-        console.log(`[keptn] Could not find repository ${shipyard.project}.`);
+        utils.logErrorMessage(keptnContext, `Could not find repository ${shipyard.project}.`);
         console.log(e.message);
       }
     }
     return deleted;
   }
 
-  private async updateWebHook(
-    active: boolean, orgName: string, project: string) : Promise<void> {
-    console.log(`Setting WebHook for ${orgName}-${project} to ${active}`);
-    const repo = await gh.getRepo(orgName, project);
-    const hooks = await repo.listHooks();
-    const hook = hooks.data.find((item) => {
-      return item.config !== undefined && item.config.url.indexOf('event-broker') >= 0;
-    });
-    repo.updateHook(hook.id, {
-      active,
-    });
-  }
-
-  private async createRepository(orgName : string, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<boolean> {
-    const repository = {
-      name : shipyard.project,
-    };
+  private async createRepository(orgName: string, shipyard: ShipyardModel, keptnContext: string): Promise<boolean> {
+    const repository = { name: shipyard.project };
 
     try {
       const org = await gh.getOrganization(orgName);
-      const result = await org.createRepo(repository);
+      await org.createRepo(repository);
     } catch (e) {
       if (e.response) {
         if (e.response.statusText === 'Not Found') {
-          const logMsg = `[github-service] Could not find organziation ${orgName}.`;
-          console.log(logMsg);
-          wsLogger.logMessage(logMsg, true);
+          utils.logErrorMessage(keptnContext, `Could not find organziation ${orgName}.`);
         } else if (e.response.statusText === 'Unprocessable Entity') {
-          const logMsg = `[github-service] Repository ${shipyard.project} already available.`
-          console.log(logMsg);
-          wsLogger.logMessage(logMsg, true);
+          utils.logInfoMessage(keptnContext, `Repository ${shipyard.project} already available.`);
         }
       }
-      const logMsg = `Error: ${e.message}`
-      console.log(logMsg);
+      utils.logErrorMessage(keptnContext, `Error: ${e.message}`);
       return false;
     }
     return true;
   }
 
-  private async setHook(repo : any, shipyard : ShipyardModel) : Promise<any> {
-    try {
-      const istioIngressGatewayService = await utils.getK8sServiceUrl(
-        'istio-ingressgateway', 'istio-system');
-
-      const eventBrokerUri = `event-broker-ext.keptn.` +
-        `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
-
-      const credService: CredentialsService = CredentialsService.getInstance();
-
-      await repo.createHook({
-        name: 'web',
-        events: ['push'],
-        config: {
-          url: `https://${eventBrokerUri}/github`,
-          content_type: 'json',
-          secret: await credService.getKeptnApiToken(),
-          insecure_ssl: 1,
-        },
-      });
-      console.log(`[github-service] Webhook http://${eventBrokerUri}/github activated.`);
-
-    } catch (e) {
-      console.log('[github-service] Setting webhook failed.');
-      console.log(e.message);
-    }
-  }
-
-  private async initialCommit(repo : any, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<any> {
+  private async initialCommit(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -289,14 +359,12 @@ export class GitHubService {
         `# keptn takes care of your ${shipyard.project}`,
         '[keptn]: Initial commit', { encode: true });
     } catch (e) {
-      const logMsg = '[github-service] Initial commit failed.';
-      console.log(logMsg);
-      wsLogger.logMessage(logMsg, false);
+      utils.logErrorMessage(keptnContext, `Initial commit failed.`);
       console.log(e.message);
     }
   }
 
-  private async createBranchesForEachStages(repo : any, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<any> {
+  private async createBranchesForEachStages(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
     try {
       const chart = {
         apiVersion: 'v1',
@@ -322,11 +390,12 @@ export class GitHubService {
           '[keptn]: Added helm-chart values.yaml file.',
           { encode: true });
 
-        if (stage.deployment_strategy === 'blue_green_service') {
-          // add istio gateway to stage
+        // add istio gateway to stage
+        if ((stage.deployment_strategy === 'blue_green_service') ||
+         (stage.deployment_strategy === 'direct')) {
+
           let gatewaySpec = await utils.readFileContent(GitHubService.gatewayTplFile);
-          gatewaySpec = Mustache.render(
-            gatewaySpec,
+          gatewaySpec = Mustache.render(gatewaySpec,
             { application: shipyard.project, stage: stage.name });
 
           await repo.writeFile(
@@ -338,14 +407,12 @@ export class GitHubService {
         }
       });
     } catch (e) {
-      const logMsg = '[github-service] Creating branches failed.';
-      console.log(logMsg);
-      wsLogger.logMessage(logMsg, false);
+      utils.logErrorMessage(keptnContext, `Creating branches failed.`);
       console.log(e.message);
     }
   }
 
-  private async addShipyardToMaster(repo: any, shipyard : ShipyardModel, wsLogger : LoggingService) : Promise<any> {
+  private async addShipyardToMaster(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -355,17 +422,28 @@ export class GitHubService {
         { encode: true });
 
     } catch (e) {
-      const logMsg = '[github-service] Adding shipyard to master failed.'
-      console.log(logMsg);
-      wsLogger.logMessage(logMsg, false);
+      utils.logErrorMessage(keptnContext, `Adding shipyard to master failed.`);
       console.log(e.message);
     }
   }
 
-  async onboardService(orgName : string, service : ServiceModel) : Promise<any> {
-    if (service.values && service.values.service) {
+  async onboardService(orgName: string, cloudEvent: KeptnCloudEvent): Promise<any> {
+    const service: ServiceModel = cloudEvent.data;
+    const keptnContext: string = cloudEvent.shkeptncontext;
 
-      const serviceName = camelize(service.values.service.name);
+    if ((service.values && service.values.service) || (service.manifest)) {
+      let serviceName: string = undefined;
+
+      if ((service.values && service.values.service)) {
+        serviceName = camelize(service.values.service.name);
+      } else if (service.manifest) {
+        serviceName = service.manifest.applications[0].name;
+      } else {
+        utils.logInfoMessage(keptnContext, `Manifest type not implemented.`);
+      }
+
+      utils.logInfoMessage(keptnContext, `Start onboarding of service ${serviceName}.`);
+
       try {
         const repo = await gh.getRepo(orgName, service.project);
         //TODO: WEBHOOK - await this.updateWebHook(false, orgName, service.project);
@@ -385,28 +463,29 @@ export class GitHubService {
 
           // service already defined in helm chart
           if (valuesObj[serviceName] !== undefined) {
-            console.log(`[github-service] Service already available in stage: ${stage.name}.`);
+            utils.logInfoMessage(keptnContext, `Service already available in stage: ${stage.name}.`);
           } else {
-            console.log(`[github-service] Adding artifacts to: ${stage.name}.`);
-            await this.addArtifactsToBranch(repo, orgName, service, stage, valuesObj, chartName);
+            utils.logInfoMessage(keptnContext, `Adding artifacts to: ${stage.name}.`);
+            await this.addArtifactsToBranch(repo, service, stage, valuesObj, chartName, keptnContext);
+            utils.logInfoMessage(keptnContext, `Service onboarded to: ${stage.name}.`);
           }
         }));
-        // TODO: WEBHOOK - this.updateWebHook(true, orgName, service.project);
       } catch (e) {
-        console.log('[github-service] Onboarding service failed.');
+        utils.logErrorMessage(keptnContext, `Onboarding service failed.`);
         console.log(e.message);
-        // TODO: WEBHOOK - await this.updateWebHook(true, orgName, service.project);
       }
     } else {
-      console.log('[github-service] CloudEvent does not contain data.values.');
+      utils.logInfoMessage(keptnContext, `CloudEvent does not contain data.values.`);
     }
   }
 
-  private async addArtifactsToBranch(repo: any, orgName: string, service : ServiceModel, stage: Stage, valuesObj: any, chartName: string) {
+  private async addArtifactsToBranch(repo: any, service: ServiceModel, stage: Stage, valuesObj: any, chartName: string, keptnContext: string) {
+
     if (service.values) {
       // update values file
       const serviceName = camelize(service.values.service.name);
       valuesObj[serviceName] = service.values;
+
       await repo.writeFile(
         stage.name,
         'helm-chart/values.yaml',
@@ -420,70 +499,66 @@ export class GitHubService {
       const istioIngressGatewayService = await utils.getK8sServiceUrl(
         'istio-ingressgateway', 'istio-system');
 
-      if (stage.deployment_strategy === 'blue_green_service') {
-        const bgValues = valuesObj;
-
-        // update values file
-        bgValues[`${serviceName}Blue`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
-        bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
-
-        bgValues[`${serviceName}Blue`].image.tag = `${stage.name}-stable`;
-
-        if (bgValues[`${serviceName}Blue`].service) {
-          bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
-        }
-        if (bgValues[`${serviceName}Green`].service) {
-          bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
-        }
-        await repo.writeFile(
+      if (stage.deployment_strategy === 'direct') {
+        let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFileDirect);
+        await this.createVirtualService(
+          repo,
+          service.project,
+          serviceName,
           stage.name,
-          `helm-chart/values.yaml`,
-          YAML.stringify(bgValues, 100).replace(/\'/g, ''),
-          `[keptn]: Added blue/green values`,
-          { encode: true });
+          chartName,
+          istioIngressGatewayService,
+          virtualServiceTpl,
+        );
+
+      } else if (stage.deployment_strategy === 'blue_green_service') {
+        await this.addBlueGreenValues(repo, valuesObj, serviceName, stage);
 
         // get templates for the service
         const branch = await repo.getBranch(stage.name);
         const gitHubRootTree: TreeModel = (await repo.getTree(branch.data.commit.sha)).data;
 
         // get the content of helm-chart/templates
-        const helmTree : TreeModel = (
+        const helmTree: TreeModel = (
           await repo.getTree(gitHubRootTree.tree.filter(item => item.path === 'helm-chart')[0].sha)
           ).data;
-        const templateTree : TreeModel = (
+
+        const templateTree: TreeModel = (
           await repo.getTree(helmTree.tree.filter(item => item.path === 'templates')[0].sha)
           ).data;
 
         // create blue/green yamls for each deployment/service
         for (let j = 0; j < templateTree.tree.length; j = j + 1) {
 
-          const template : TreeItem = templateTree.tree[j];
+          const template: TreeItem = templateTree.tree[j];
 
           if (template.path.indexOf(serviceName) === 0 &&
              (template.path.indexOf('yml') > -1 || template.path.indexOf('yaml') > -1) &&
              (template.path.indexOf('Blue') < 0 && template.path.indexOf('Green') < 0)) {
 
-            const decamelizedserviceName = decamelize(serviceName, '-');
             const templateContentB64Enc = await repo.getContents(
               stage.name,
               `helm-chart/templates/${template.path}`);
             const templateContent = base64decode(templateContentB64Enc.data.content);
 
             if (template.path.indexOf('-service.yaml') > 0) {
-              await this.createIstioEntry(
-                orgName,
+              await this.createDestinationRule(repo, serviceName, stage.name, chartName);
+
+              let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFileBlueGreen);
+              await this.createVirtualService(
                 repo,
-                decamelizedserviceName,
+                service.project,
                 serviceName,
                 stage.name,
                 chartName,
                 istioIngressGatewayService,
+                virtualServiceTpl,
               );
+
             } else if (template.path.indexOf('-deployment.yaml') > 0) {
               await this.createBlueGreenDeployment(
                 repo,
                 serviceName,
-                decamelizedserviceName,
                 stage.name,
                 templateContent,
                 template,
@@ -492,18 +567,50 @@ export class GitHubService {
           }
         }
       }
-    } /*else if (cloudEvent.data.manifest) {
-      await repo.writeFile(stage.name, `${serviceName}.yaml`, YAML.stringify(cloudEvent.data.manifest, 100), `[keptn]: Added manifest for ${serviceName}`, { encode: true });
-    }*/ else {
-      console.log('[github-service] For onboarding a service, a values or manifest object must be available in the data block.');
+
+    } else if (service.manifest) {
+      const serviceName = service.manifest.applications[0].name;
+
+      await repo.writeFile(
+        stage.name,
+        `${serviceName}_manifest.yml`,
+        YAML.stringify(service.manifest, 100),
+        `[keptn]: Added manifest for ${serviceName}.`,
+        { encode: true });
+
+    } else {
+      utils.logInfoMessage(keptnContext, `For onboarding a service, a values or manifest object must be available in the data block.`);
     }
   }
 
-  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, service : ServiceModel) {
+  private async addBlueGreenValues(repo: any, valuesObj: any, serviceName: string, stage: any) {
+    const bgValues = valuesObj;
+
+    // update values file
+    bgValues[`${serviceName}Blue`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
+    bgValues[`${serviceName}Green`] = YAML.parse(YAML.stringify(valuesObj[serviceName], 100));
+
+    if (bgValues[`${serviceName}Blue`].service) {
+      bgValues[`${serviceName}Blue`].service.name = bgValues[`${serviceName}Blue`].service.name + '-blue';
+    }
+
+    if (bgValues[`${serviceName}Green`].service) {
+      bgValues[`${serviceName}Green`].service.name = bgValues[`${serviceName}Green`].service.name + '-green';
+    }
+
+    await repo.writeFile(
+      stage.name,
+      `helm-chart/values.yaml`,
+      YAML.stringify(bgValues, 100).replace(/\'/g, ''),
+      `[keptn]: Added blue/green values`,
+      { encode: true });
+  }
+
+  private async addDeploymentServiceTemplates(repo: any, serviceName: string, branch: string, service: ServiceModel) {
     const cServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_C', 'g');
     const decServiceNameRegex = new RegExp('SERVICE_PLACEHOLDER_DEC', 'g');
 
-    let deploymentTpl : string = undefined;
+    let deploymentTpl: string = undefined;
 
     if (service.templates && service.templates.deployment) {
       deploymentTpl = service.templates.deployment;
@@ -522,10 +629,10 @@ export class GitHubService {
         { encode: true });
     }
 
-    let serviceTpl : string = undefined;
+    let serviceTpl: string = undefined;
 
     if (service.templates && service.templates.service) {
-      serviceTpl = service.templates.deployment;
+      serviceTpl = service.templates.service;
     } else {
       serviceTpl = await utils.readFileContent(GitHubService.serviceTplFile);
     }
@@ -542,9 +649,10 @@ export class GitHubService {
     }
   }
 
-  async createIstioEntry(orgName: string, repo: any, serviceKey : string, serviceName : string, branch: string, chartName: string, istioIngressGatewayService: any) {
-    // create destination rule
+  async createDestinationRule(repo: any, serviceName: string, branch: string, chartName: string) {
     let destinationRuleTpl = await utils.readFileContent(GitHubService.destinationRuleTplFile);
+    const serviceKey = decamelize(serviceName, '-');
+
     destinationRuleTpl = Mustache.render(destinationRuleTpl, {
       serviceName: serviceKey,
       chartName,
@@ -556,15 +664,17 @@ export class GitHubService {
       destinationRuleTpl,
       `[keptn]: Added istio destination rule for ${serviceName}.`,
       { encode: true });
+  }
 
-    // create istio virtual service
-    let virtualServiceTpl = await utils.readFileContent(GitHubService.virtualServiceTplFile);
+  async createVirtualService(repo: any, project: string, serviceName: string, branch: string, chartName: string, gateway: any, virtualServiceTpl: any) {
+    const serviceKey = decamelize(serviceName, '-');
+
     virtualServiceTpl = Mustache.render(virtualServiceTpl, {
-      gitHubOrg: orgName,
+      application: project,
       serviceName: serviceKey,
       chartName,
       environment: branch,
-      ingressGatewayIP: istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip,
+      ingressGatewayIP: gateway.body.status.loadBalancer.ingress[0].ip,
     });
     await repo.writeFile(
       branch,
@@ -574,20 +684,25 @@ export class GitHubService {
       { encode: true });
   }
 
-  async createBlueGreenDeployment(repo: any, serviceName : string, decamelizedServiceName : string, branch: string, templateContent: any, template: any) {
+  async createBlueGreenDeployment(repo: any, serviceName: string, branch: string, templateContent: any, template: any) {
+    const decamelizedServiceName = decamelize(serviceName, '-');
+
     const serviceRegex = new RegExp(serviceName, 'g');
-    const nameRegex = new RegExp(`name: {{ .Chart.Name }}-${decamelizedServiceName}`, 'g');
+    const nameRegex = new RegExp(`name: ${decamelizedServiceName}`, 'g');
     const dplyRegex = new RegExp(`deployment: ${decamelizedServiceName}`, 'g');
+    const claimName = new RegExp(`claimName: ${decamelizedServiceName}`, 'g');
     const valuesRegex = new RegExp(`.Values.${serviceName}`, 'g');
 
     // modify deployment template for blue
     let templateBlue = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-blue`);
     templateBlue = templateBlue.replace(dplyRegex, `deployment: ${decamelizedServiceName}-blue`);
+    templateBlue = templateBlue.replace(claimName, `claimName: ${decamelizedServiceName}-blue`);
     templateBlue = templateBlue.replace(valuesRegex, `.Values.${serviceName}Blue`);
 
     // modify deployment template for gree
     let templateGreen = templateContent.replace(nameRegex, `name: ${decamelizedServiceName}-green`);
     templateGreen = templateGreen.replace(dplyRegex, `deployment: ${decamelizedServiceName}-green`);
+    templateGreen = templateGreen.replace(claimName, `claimName: ${decamelizedServiceName}-green`);
     templateGreen = templateGreen.replace(valuesRegex, `.Values.${serviceName}Green`);
 
     const templateBluePathName = template.path.replace(serviceRegex, `${serviceName}Blue`);
@@ -609,5 +724,46 @@ export class GitHubService {
 
     // delete the original template
     await repo.deleteFile(branch, `helm-chart/templates/${template.path}`);
+  }
+
+  private async setHook(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
+    try {
+      const istioIngressGatewayService = await utils.getK8sServiceUrl(
+        'istio-ingressgateway', 'istio-system');
+
+      const eventBrokerUri = `event-broker-ext.keptn.` +
+        `${istioIngressGatewayService.body.status.loadBalancer.ingress[0].ip}.xip.io`;
+
+      const credService: CredentialsService = CredentialsService.getInstance();
+
+      await repo.createHook({
+        name: 'web',
+        events: ['push'],
+        config: {
+          url: `https://${eventBrokerUri}/github`,
+          content_type: 'json',
+          secret: await credService.getKeptnApiToken(keptnContext),
+          insecure_ssl: 1,
+        },
+      });
+      utils.logInfoMessage(keptnContext, `Webhook http://${eventBrokerUri}/github activated.`);
+
+    } catch (e) {
+      utils.logErrorMessage(keptnContext, `Setting webhook failed.`);
+      console.log(e.message);
+    }
+  }
+
+  private async updateWebHook(
+    active: boolean, orgName: string, project: string): Promise<void> {
+
+    const repo = await gh.getRepo(orgName, project);
+    const hooks = await repo.listHooks();
+    const hook = hooks.data.find((item) => {
+      return item.config !== undefined && item.config.url.indexOf('event-broker') >= 0;
+    });
+    repo.updateHook(hook.id, {
+      active,
+    });
   }
 }

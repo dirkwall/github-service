@@ -8,13 +8,30 @@ class Utils {
     return String(fs.readFileSync(filePath));
   }
 
+  logInfoMessage(keptnContext: string, message: string) {
+    console.log(JSON.stringify({ 
+      keptnContext: keptnContext,
+      keptnService: 'github-service',
+      logLevel: 'INFO',
+      message: message,
+    }));
+  }
+
+  logErrorMessage(keptnContext: string, message: string) {
+    console.log(JSON.stringify({ 
+      keptnContext: keptnContext,
+      keptnService: 'github-service',
+      logLevel: 'ERROR',
+      message: message,
+    }));
+  }
+
   async getK8sServiceUrl(serviceName, namespace): Promise<K8sServiceInfo> {
     const k8sClient = new K8sClientFactory().createK8sClient();
     const service =
       await k8sClient.api.v1.namespace(namespace).service(serviceName).get();
 
-    console.log(service);
-    return service as K8sServiceInfo;
+      return service as K8sServiceInfo;
   }
 }
 
