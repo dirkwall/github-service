@@ -1,13 +1,13 @@
 import { K8sClientFactory } from './K8sClientFactory';
 import { K8sServiceInfo } from '../types/K8sServiceInfo';
-import { LoggingService } from '../services/LoggingService';
+import { WebSocketLogger } from '../services/WebSocketLogger';
 
 const fs = require('fs');
 
 class Utils {
   private static instance;
 
-  private wsLogger: LoggingService;
+  private wsLogger: WebSocketLogger;
 
   private constructor() {
 
@@ -24,7 +24,7 @@ class Utils {
     return String(fs.readFileSync(filePath));
   }
 
-  setWsLogger(wsLogger: LoggingService) {
+  setWsLogger(wsLogger: WebSocketLogger) {
     Utils.instance.wsLogger = wsLogger;
   }
 
@@ -38,7 +38,7 @@ class Utils {
     console.log(msg);
 
     if (this.wsLogger !== undefined) {
-      this.wsLogger.logMessage(keptnContext, message, terminate);
+      this.wsLogger.logMessage(keptnContext, message, 'INFO', terminate);
     }
   }
 
@@ -52,7 +52,7 @@ class Utils {
     console.log(msg);
 
     if (this.wsLogger !== undefined) {
-      this.wsLogger.logMessage(keptnContext, message, terminate);
+      this.wsLogger.logMessage(keptnContext, message, 'ERROR', true);
     }
   }
 

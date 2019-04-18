@@ -3,8 +3,7 @@ import { KeptnRequestModel } from '../types/KeptnRequestModel';
 
 const WebSocket = require('ws');
 
-export class LoggingService {
-
+export class WebSocketLogger {
   private webSocket: any;
 
   constructor() {
@@ -32,7 +31,11 @@ export class LoggingService {
     });
   }
 
-  logMessage(keptnContext: string, message: string, terminate: boolean = false): void {
+  logMessage(
+    keptnContext: string,
+    message: string,
+    logLevel: string = 'INFO',
+    terminate: boolean = false): void {
     if (this.webSocket !== undefined) {
       const logEvent = new KeptnRequestModel();
       logEvent.type = KeptnRequestModel.EVENT_TYPES.LOG;
@@ -40,8 +43,13 @@ export class LoggingService {
       logEvent.data = {
         message,
         terminate,
+        logLevel,
       };
       this.webSocket.send(JSON.stringify(logEvent));
     }
+  }
+
+  closeConnection() {
+    this.webSocket.terminate();
   }
 }
