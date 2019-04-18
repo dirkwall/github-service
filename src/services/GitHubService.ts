@@ -150,7 +150,7 @@ export class GitHubService {
 
               if (shipyardObj.stages[j].name === config.stage) {
                 newConfig.githuborg = orgName;
-                newConfig.teststategy = shipyardObj.stages[j].test_strategy;
+                newConfig.teststrategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
 
                 updated = await this.updateValuesFile(
