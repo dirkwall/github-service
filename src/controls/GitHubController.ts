@@ -58,8 +58,9 @@ export class GitHubController implements interfaces.Controller {
     next: express.NextFunction,
   ): Promise<void> {
     console.log(JSON.stringify(request.body, null, 2));
+    let wsLogger: WebSocketLogger;
     if (request.body.data.channelInfo !== undefined) {
-      const wsLogger = new WebSocketLogger();
+      wsLogger = new WebSocketLogger();
       await wsLogger.connect(request.body.data.channelInfo);
       Utils.getInstance().setWsLogger(wsLogger);
     }
@@ -96,7 +97,9 @@ export class GitHubController implements interfaces.Controller {
     const result = {
       result: 'success',
     };
-
+    if (wsLogger !== undefined) {
+      wsLogger.closeConnection();
+    }
     response.send(result);
   }
 
