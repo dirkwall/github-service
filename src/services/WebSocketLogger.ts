@@ -45,7 +45,9 @@ export class WebSocketLogger {
         terminate,
         logLevel,
       };
-      this.webSocket.send(JSON.stringify(logEvent));
+      if (this.webSocket.readyState === WebSocket.OPEN) {
+        this.webSocket.send(JSON.stringify(logEvent));
+      }
     }
   }
 
