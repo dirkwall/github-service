@@ -29,31 +29,34 @@ class Utils {
   }
 
   logInfoMessage(keptnContext: string, message: string, terminate: boolean = false) {
-    const msg = JSON.stringify({
-      keptnContext,
-      message,
-      keptnService: 'github-service',
-      logLevel: 'INFO',
-    });
-    console.log(msg);
-
-    if (this.wsLogger !== undefined) {
-      this.wsLogger.logMessage(keptnContext, message, 'INFO', terminate);
-    }
+    try {
+      const msg = JSON.stringify({
+        keptnContext,
+        message,
+        keptnService: 'github-service',
+        logLevel: 'INFO',
+      });
+      console.log(msg);
+      if (this.wsLogger !== undefined) {
+        this.wsLogger.logMessage(keptnContext, message, 'INFO', terminate);
+      }
+    } catch (e) {}
   }
 
   logErrorMessage(keptnContext: string, message: string, terminate: boolean = false) {
-    const msg = JSON.stringify({
-      keptnContext,
-      message,
-      keptnService: 'github-service',
-      logLevel: 'ERROR',
-    });
-    console.log(msg);
+    try {
+      const msg = JSON.stringify({
+        keptnContext,
+        message,
+        keptnService: 'github-service',
+        logLevel: 'ERROR',
+      });
+      console.log(msg);
 
-    if (this.wsLogger !== undefined) {
-      this.wsLogger.logMessage(keptnContext, message, 'ERROR', true);
-    }
+      if (this.wsLogger !== undefined) {
+        this.wsLogger.logMessage(keptnContext, message, 'ERROR', true);
+      }
+    } catch (e) {}
   }
 
   async getK8sServiceUrl(serviceName, namespace): Promise<K8sServiceInfo> {
