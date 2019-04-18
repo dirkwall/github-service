@@ -63,6 +63,7 @@ export class GitHubController implements interfaces.Controller {
       wsLogger = new WebSocketLogger();
       await wsLogger.connect(request.body.data.channelInfo);
       Utils.getInstance().setWsLogger(wsLogger);
+      delete request.body.data.channelInfo;
     }
 
     const cloudEvent : CloudEvent = request.body;
