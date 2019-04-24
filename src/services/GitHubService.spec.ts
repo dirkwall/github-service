@@ -6,6 +6,7 @@ import * as sinon from 'sinon';
 import { cleanUpMetadata } from 'inversify-express-utils';
 import { GitHubService } from './GitHubService';
 import { CloudEvent } from 'cloudevent';
+import { LoggingService } from '../services/LoggingService';
 
 describe('GitHubService', () => {
   let gitHubSvc : GitHubService;
@@ -39,7 +40,7 @@ describe('GitHubService', () => {
     }
 
     const cloudEvent : CloudEvent = request.body;
-    const created = await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent);
+    const created = await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent, new LoggingService());
     expect(created).to.be.true;
   }).timeout(10000);
 

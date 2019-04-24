@@ -18,11 +18,13 @@ import {
 import { GitHubService } from '../services/GitHubService';
 import { CredentialsService } from '../services/CredentialsService';
 import { CloudEvent } from 'cloudevent';
+import { ConfigurationModel } from 'ConfigurationModel';
+import { WebSocketLogger } from '../services/WebSocketLogger';
 
 import { Utils } from '../lib/Utils';
 
 // Util class
-const utils = new Utils();
+const utils = Utils.getInstance();
 
 @ApiPath({
   name: 'GitHub',
@@ -55,37 +57,50 @@ export class GitHubController implements interfaces.Controller {
     response: express.Response,
     next: express.NextFunction,
   ): Promise<void> {
+    console.log(JSON.stringify(request.body, null, 2));
+    let wsLogger: WebSocketLogger;
+    if (request.body.data.channelInfo !== undefined) {
+      wsLogger = new WebSocketLogger();
+      await wsLogger.connect(request.body.data.channelInfo);
+      Utils.getInstance().setWsLogger(wsLogger);
+      delete request.body.data.channelInfo;
+    }
 
     const cloudEvent : CloudEvent = request.body;
 
     const gitHubSvc : GitHubService = await GitHubService.getInstance();
     const credSvc: CredentialsService = CredentialsService.getInstance();
 
-    if (request.body.eventType == 'create.project' || request.body.type == 'create.project' ) {
+    if (request.body.eventType === 'create.project' || request.body.type === 'create.project') {
       await gitHubSvc.createProject(GitHubService.gitHubOrg , cloudEvent);
-
-    } else if (request.body.eventType == 'onboard.service' || request.body.type == 'onboard.service' ) {
+    } else if (
+      request.body.eventType === 'onboard.service' || request.body.type === 'onboard.service') {
       await gitHubSvc.onboardService(GitHubService.gitHubOrg, cloudEvent);
-
-    } else if (request.body.eventType == 'configure' || request.body.type == 'configure' ) {
+    } else if (request.body.eventType === 'configure' || request.body.type === 'configure') {
       const updated: boolean = await credSvc.updateGithubConfig(cloudEvent);
 
       if (updated) { await GitHubService.updateCredentials(cloudEvent); }
+      utils.logInfoMessage(
+        request.body.shkeptncontext,
+        `GitHub configuration updated.`, true);
 
-    } else if (request.body.type == 'sh.keptn.events.new-artefact') {
+    } else if (request.body.type === 'sh.keptn.events.new-artefact') {
       await gitHubSvc.updateConfiguration(GitHubService.gitHubOrg, cloudEvent);
 
     } else {
-      if (request.body.shkeptncontext ) {
-        utils.logInfoMessage(request.body.shkeptncontext,
-          `This service does not handle the event type ${request.body.eventType}.`);
+      if (request.body.shkeptncontext) {
+        utils.logInfoMessage(
+          request.body.shkeptncontext,
+          `This service does not handle the event type ${request.body.eventType}.`, true);
       }
     }
 
     const result = {
       result: 'success',
     };
-
+    if (wsLogger !== undefined) {
+      wsLogger.closeConnection();
+    }
     response.send(result);
   }
 
