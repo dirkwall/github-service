@@ -10,7 +10,7 @@ import * as K8sApi from 'kubernetes-client';
 import { base64decode } from 'nodejs-base64';
 
 // Util class
-const utils = new Utils();
+const utils = Utils.getInstance();
 
 export class CredentialsService {
 
@@ -79,7 +79,8 @@ export class CredentialsService {
 
     if (gitCreds !== undefined && gitCreds.org && gitCreds.token && gitCreds.user) {
       const secret = new KeptnConfigSecretFactory().createKeptnConfigSecret(gitCreds);
-      const updatedSecret: CredentialsSecret = await this.updateGithubCredentials(secret, keptnContext);
+      const updatedSecret: CredentialsSecret =
+        await this.updateGithubCredentials(secret, keptnContext);
       if (updatedSecret !== undefined) {
         updated = true;
         utils.logInfoMessage(keptnContext, `Secret created.`);

@@ -12,6 +12,8 @@ import { Utils } from '../lib/Utils';
 import { base64decode } from 'nodejs-base64';
 import { v4 as uuid } from 'uuid';
 
+import { WebSocketLogger } from './WebSocketLogger';
+
 import axios  from 'axios';
 
 const decamelize = require('decamelize');
@@ -21,7 +23,7 @@ const Mustache = require('mustache');
 const YAML = require('yamljs');
 
 // Util class
-const utils = new Utils();
+const utils = Utils.getInstance();
 
 // Basic authentication
 let gh;
@@ -150,7 +152,7 @@ export class GitHubService {
 
               if (shipyardObj.stages[j].name === config.stage) {
                 newConfig.githuborg = orgName;
-                newConfig.teststategy = shipyardObj.stages[j].test_strategy;
+                newConfig.teststrategy = shipyardObj.stages[j].test_strategy;
                 newConfig.deploymentstrategy = shipyardObj.stages[j].deployment_strategy;
 
                 updated = await this.updateValuesFile(
@@ -306,7 +308,7 @@ export class GitHubService {
       await this.createBranchesForEachStages(repo, shipyard, keptnContext);
       await this.addShipyardToMaster(repo, shipyard, keptnContext);
 
-      utils.logInfoMessage(keptnContext, `Project ${shipyard.project} created.`);
+      utils.logInfoMessage(keptnContext, `Project ${shipyard.project} created.`, true);
     }
     return created;
   }
@@ -329,7 +331,10 @@ export class GitHubService {
     return deleted;
   }
 
-  private async createRepository(orgName: string, shipyard: ShipyardModel, keptnContext: string): Promise<boolean> {
+  private async createRepository(
+    orgName: string,
+    shipyard: ShipyardModel,
+    keptnContext: string): Promise<boolean> {
     const repository = { name: shipyard.project };
 
     try {
@@ -349,7 +354,10 @@ export class GitHubService {
     return true;
   }
 
-  private async initialCommit(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
+  private async initialCommit(
+    repo: any,
+    shipyard: ShipyardModel,
+    keptnContext: string): Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -362,7 +370,10 @@ export class GitHubService {
     }
   }
 
-  private async createBranchesForEachStages(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
+  private async createBranchesForEachStages(
+    repo: any,
+    shipyard: ShipyardModel,
+    keptnContext: string): Promise<any> {
     try {
       const chart = {
         apiVersion: 'v1',
@@ -393,7 +404,8 @@ export class GitHubService {
          (stage.deployment_strategy === 'direct')) {
 
           let gatewaySpec = await utils.readFileContent(GitHubService.gatewayTplFile);
-          gatewaySpec = Mustache.render(gatewaySpec,
+          gatewaySpec = Mustache.render(
+            gatewaySpec,
             { application: shipyard.project, stage: stage.name });
 
           await repo.writeFile(
@@ -410,7 +422,10 @@ export class GitHubService {
     }
   }
 
-  private async addShipyardToMaster(repo: any, shipyard: ShipyardModel, keptnContext: string): Promise<any> {
+  private async addShipyardToMaster(
+    repo: any,
+    shipyard: ShipyardModel,
+    keptnContext: string): Promise<any> {
     try {
       await repo.writeFile(
         'master',
@@ -468,6 +483,7 @@ export class GitHubService {
             utils.logInfoMessage(keptnContext, `Service onboarded to: ${stage.name}.`);
           }
         }));
+        utils.logInfoMessage(keptnContext, `Service successfully onboarded`, true);
       } catch (e) {
         utils.logErrorMessage(keptnContext, `Onboarding service failed.`);
         console.log(e.message);
