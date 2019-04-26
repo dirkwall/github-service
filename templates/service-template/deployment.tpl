@@ -22,6 +22,12 @@ spec:
         env:
         - name: DT_TAGS
           value: "application={{ .Chart.Name }}"
+        - name: KUBERNETES_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.namespace"
+        - name: CONTAINER_IMAGE
+          value: "{{ .Values.SERVICE_PLACEHOLDER_C.image.repository }}:{{ .Values.SERVICE_PLACEHOLDER_C.image.tag }}"
         ports:
         - name: internalport
           containerPort: {{ .Values.SERVICE_PLACEHOLDER_C.service.internalPort }}
