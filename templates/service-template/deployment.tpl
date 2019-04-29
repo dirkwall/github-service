@@ -22,10 +22,18 @@ spec:
         env:
         - name: DT_TAGS
           value: "application={{ .Chart.Name }}"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.name"
         - name: KUBERNETES_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: "metadata.namespace"
+        - name: DEPLOYMENT_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: "metadata.labels['deployment']"
         - name: CONTAINER_IMAGE
           value: "{{ .Values.SERVICE_PLACEHOLDER_C.image.repository }}:{{ .Values.SERVICE_PLACEHOLDER_C.image.tag }}"
         ports:
