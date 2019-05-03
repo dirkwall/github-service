@@ -5,10 +5,9 @@ node_js:
 - '10'
 services:
 - docker
-env:
+before_script:
 - IMAGE=keptn/github-service
 - REGISTRY_USER=dirkwallerstorfer
-before_script:
 - VERSION="$(cat version)"
 - echo $VERSION
 - DATE="$(date +'%Y%m%d.%H%M')"
