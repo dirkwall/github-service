@@ -8,7 +8,6 @@ RUN addgroup mygroup && adduser -D -G mygroup myuser && mkdir -p /usr/src/app &&
 WORKDIR /usr/src/app
 
 COPY package.json /usr/src/app/
-
 RUN npm install -g tsc 
 RUN npm install -g concurrently 
 RUN npm install -g typescript
