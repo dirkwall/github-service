@@ -12,9 +12,12 @@ env:
   - secure: "XZJCwzmmB01ddvmWGB45WBFhP2vCaQG5mARWhrVN1gdPwSVYztqfJ8Aux6WHTjwgmWAy1v7kO+XzM43OUkWbr5mtPlfZgcRbnYmRsME31dINMpKDAQsc26OItZWIdrFlRAEoHqYi38Qln2cBBRRvgOpfueklQ4/iikhsuVFeRI3GEqn7oi4ktMxyL+xa0gHryg7xPdCk4azj9TqNULWrYtVd7d9ntTQRh4yLoVmm+DBWj4J/s0RLdIVe/lD7kFX969VgylqmLuw+OhVDjDZJZrEfE5ji+ZWmC3WttkX3lYpCxDDxu6v5PcDZjPhkRJB0LTtHvTHq9QGCjpFmFZD3DR6GdLrYsvgxkfCHBkdRf9vPvBrGy+u1V90xNUhV/Sly3lFJw3/SYgVa+aCEqAdmTr4XdRd/sNePBGB1AQtfKac6JuIKh11wENORcazTPPQ0v35Y0RvIRIpAGSgoV5NI68X9STwLMWxxNIm8x8aQsVOFQpw6NzXK41RGGMPH3PdT37dbWQnIcTd7DFEEWhVcmGOmFnAfAXR4CPZOeVbw/mtMEZPvfhhkgTBz0TitKmsDcP+IFbowPcDF3+eSwQXBG3t9+7VKRw3uvSObFYbNYMmOpob4z4uo6U5laE9D6m13b0J7Q3Wd/M840naJ0GC5kf8xpMEcsnuwN8lerdhhnsQ=" 
 before_script:
   - VERSION="$(cat version)"
+  - echo $VERSION
   - DATE="$(date +'%Y%m%d.%H%M')"
+  - echo $DATE
   - GIT_SHA="$(git rev-parse HEAD)"
-  - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASSWORD"
+  - echo $GIT_SHA
+  - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
 jobs:
   include:
   - stage: develop
