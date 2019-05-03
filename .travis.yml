@@ -6,6 +6,8 @@ node_js:
 services:
 - docker
 before_script:
+- sudo echo "Europe/Vienna" > /etc/timezone
+- sudo dpkg-reconfigure -f noninteractive tzdata
 - IMAGE=keptn/github-service
 - REGISTRY_USER=dirkwallerstorfer
 - VERSION="$(cat version)"
