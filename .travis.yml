@@ -6,9 +6,14 @@ node_js:
 services:
 - docker
 env:
+<<<<<<< HEAD
   matrix:
   - IMAGE=keptn/github-service
   - REGISTRY_USER=dirkwallerstorfer
+=======
+- IMAGE=keptn/github-service
+- REGISTRY_USER=dirkwallerstorfer
+>>>>>>> develop
 before_script:
 - VERSION="$(cat version)"
 - echo $VERSION
