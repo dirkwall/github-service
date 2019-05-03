@@ -2,27 +2,29 @@ sudo: true
 dist: xenial
 language: node_js
 node_js:
-  - "10"
+- '10'
 services:
-  - docker
+- docker
 env:
+  matrix:
   - IMAGE=keptn/github-service
   - REGISTRY_USER=dirkwallerstorfer
-  # REGISTRY_PASSWORD
-  - secure: "XZJCwzmmB01ddvmWGB45WBFhP2vCaQG5mARWhrVN1gdPwSVYztqfJ8Aux6WHTjwgmWAy1v7kO+XzM43OUkWbr5mtPlfZgcRbnYmRsME31dINMpKDAQsc26OItZWIdrFlRAEoHqYi38Qln2cBBRRvgOpfueklQ4/iikhsuVFeRI3GEqn7oi4ktMxyL+xa0gHryg7xPdCk4azj9TqNULWrYtVd7d9ntTQRh4yLoVmm+DBWj4J/s0RLdIVe/lD7kFX969VgylqmLuw+OhVDjDZJZrEfE5ji+ZWmC3WttkX3lYpCxDDxu6v5PcDZjPhkRJB0LTtHvTHq9QGCjpFmFZD3DR6GdLrYsvgxkfCHBkdRf9vPvBrGy+u1V90xNUhV/Sly3lFJw3/SYgVa+aCEqAdmTr4XdRd/sNePBGB1AQtfKac6JuIKh11wENORcazTPPQ0v35Y0RvIRIpAGSgoV5NI68X9STwLMWxxNIm8x8aQsVOFQpw6NzXK41RGGMPH3PdT37dbWQnIcTd7DFEEWhVcmGOmFnAfAXR4CPZOeVbw/mtMEZPvfhhkgTBz0TitKmsDcP+IFbowPcDF3+eSwQXBG3t9+7VKRw3uvSObFYbNYMmOpob4z4uo6U5laE9D6m13b0J7Q3Wd/M840naJ0GC5kf8xpMEcsnuwN8lerdhhnsQ=" 
+  global:
+    #REGISTRY_PASSWORD
+    secure: A1ZYMWzZYkLQxzs/pktRbSB/piJkoUWPJ7UHQFDJL97rhXVnwk+Ey7TlTXhRkGqwPcWzvz5M3ni4+yTayV1pMtzx9zCXnl79RVFb5+JEA0+Z2Z3toX2Q15xllEvjZgboOgILsCrjYXW4z/KAYal2GVP3V9ldPeVBTHp6o290gZQLfTWv72HvNbk3lotx8aKe+jqJw0Kvev8GGqin+pI3U3DG/a9EsbSFBLb2GOSxk8P5ilYzx6Oqepfcd2/lkfxeZx19is31OBpctYJgDfg0jYm6hOGD/vUxCgbDSaf5jA069KFtnhRDcxY1p/5Wkd5j7egUQWflk/AJn8r7OU/tEfy9I7swcx3JrGfKUoHiscRGi/s84wdi9ewcXJK1aD8etvgXFZVMwxovucrqhV9qdB10O6AeXls+w0lWtf92od2NvKIPWe7jfiXFxf9ogKXcK1ATENO/dpA5E4vY3jEPTx3VcTCrSL/a5N0zrGplCx+Pa8Um0dNwnOrCuCCP3gEgvc+uhGrT/bJBlHBm5n6bju2j3GFjBDwFUIQWmzbM4o85cfbbTA4DUYfDz2qkKCEJM+PHP0J4MZ3XvOE79H7N0OKKD/gDj4m0Bl7pT2KopvPFgGgezNVMgu/T2TPpiE8d+ELzZS8wCEVVv6GJxfNdx1Q4pl+4wBZHhujOGbTNv5A=
 before_script:
-  - VERSION="$(cat version)"
-  - echo "${VERSION}"
-  - DATE="$(date +'%Y%m%d.%H%M')"
-  - echo "${DATE}"
-  - GIT_SHA="$(git rev-parse HEAD)"
-  - echo "${GIT_SHA}"
-  - echo "$REGISTRY_PASSWORD" | docker login --username "$REGISTRY_USER" --password-stdin
+- VERSION="$(cat version)"
+- echo $VERSION
+- DATE="$(date +'%Y%m%d.%H%M')"
+- echo $DATE
+- GIT_SHA="$(git rev-parse --short HEAD)"
+- echo $GIT_SHA
+- echo "$REGISTRY_PASSWORD" | docker login --username $REGISTRY_USER --password-stdin
 jobs:
   include:
   - stage: develop
     if: branch = develop AND NOT type = pull_request
-    script: 
+    script:
     - docker build . -t "${IMAGE}:${GIT_SHA}"
     - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${DATE}"
     - docker push "${IMAGE}:${GIT_SHA}"
@@ -36,8 +38,3 @@ jobs:
     - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
     - docker push "${IMAGE}:${GIT_SHA}"
     - docker push "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
-  #- stage: release
-  #  if: branch = = /^release.*$/
-  #  script:
-  #  - 
-
