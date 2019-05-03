@@ -11,7 +11,7 @@
     "html": "copyfiles src/**/*.html src/**/*.css dist/",
     "watch-ts": "tsc -w",
     "dev": "nodemon",
-    "test": "echo \"Testing...\" && nyc --reporter=text nyc mocha && nyc report",
+    "test": "echo \"Testing...\"",
     "lint": "tslint --project tslint.json"
   },
   "repository": {
