@@ -67,6 +67,8 @@ jobs:
     script:
     - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
     - NUMBER="$(echo $TRAVIS_BRANCH | cut -d'/' -f2)"
+    - echo $IMAGE
+    - echo $GIT_SHA
     - docker build . -t "${IMAGE}:${GIT_SHA}"
     - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
     - docker push "${IMAGE}:${GIT_SHA}"
