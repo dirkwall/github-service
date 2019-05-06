@@ -27,7 +27,7 @@ jobs:
     - docker push "${IMAGE}:${GIT_SHA}"
     - docker push "${IMAGE}:${VERSION}.${DATE}"
   - stage: featureBugHotfix
-    if: branch = /^feature.*$/ OR branch = /^bug.*$/ OR branch = /^hotfix.*$/
+    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$
     script:
     - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
     - NUMBER="$(echo $TRAVIS_BRANCH | cut -d'/' -f2)"
