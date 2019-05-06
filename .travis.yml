@@ -18,7 +18,7 @@ before_install:
 jobs:
   include:
   - stage: feature/bug
-    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$
+    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$
     script:
     - echo $TRAVIS_BUILD_STAGE_NAME
     - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
@@ -53,13 +53,3 @@ jobs:
     - echo $TRAVIS_BUILD_STAGE_NAME
     - docker build . -t "${IMAGE}:${VERSION}"
     - docker push "${IMAGE}:${VERSION}"
-  - stage: hotfix
-    if: branch =~ ^hotfix.*$
-    script:
-    - echo $TRAVIS_BUILD_STAGE_NAME
-    - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
-    - NUMBER="$(echo $TRAVIS_BRANCH | cut -d'/' -f2)"
-    - docker build . -t "${IMAGE}:${GIT_SHA}"
-    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${TYPE}.${NUMBER}.${DATE}"
-    - docker push "${IMAGE}:${GIT_SHA}"
-    - docker push "${IMAGE}:${TYPE}.${NUMBER}.${DATE}"
