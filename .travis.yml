@@ -15,6 +15,7 @@ before_install:
 - echo "$REGISTRY_PASSWORD" | docker login --username $REGISTRY_USER --password-stdin
 - npm install
 - npm run test
+- echo $TRAVIS_BUILD_STAGE_NAME
 jobs:
   include:
   - stage: master
