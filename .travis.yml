@@ -13,60 +13,61 @@ before_script:
 - DATE="$(date +'%Y%m%d.%H%M')"
 - GIT_SHA="$(git rev-parse --short HEAD)"
 - echo "$REGISTRY_PASSWORD" | docker login --username $REGISTRY_USER --password-stdin
-stages:
-- name: master
-  if: branch = master AND NOT type = pull_request
-  before_install:
-  - echo $TRAVIS_BUILD_STAGE_NAME
-  install:
-  - npm install
-  before_script:
-  - npm run test
-  script:
-  - docker build . -t "${IMAGE}:${VERSION}"
-  - docker push "${IMAGE}:${VERSION}"
-- name: develop
-  if: branch = develop AND NOT type = pull_request
-  before_install:
-  - echo $TRAVIS_BUILD_STAGE_NAME
-  install:
-  - npm install
-  before_script:
-  - npm run test
-  script:
-  - docker build . -t "${IMAGE}:${GIT_SHA}"
-  - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${DATE}"
-  - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.latest"
-  - docker push "${IMAGE}:${GIT_SHA}"
-  - docker push "${IMAGE}:${VERSION}.${DATE}"
-  - docker push "${IMAGE}:${VERSION}.latest"
-- name: release-branch
-  if: branch =~ ^release.*$ AND NOT type = pull_request
-  before_install:
-  - echo $TRAVIS_BUILD_STAGE_NAME
-  install:
-  - npm install
-  before_script:
-  - npm run test
-  script:
-  - docker build . -t "${IMAGE}:${GIT_SHA}"
-  - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.rc.${DATE}"
-  - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.rc.latest"
-  - docker push "${IMAGE}:${GIT_SHA}"
-  - docker push "${IMAGE}:${VERSION}.rc.${DATE}"
-  - docker push "${IMAGE}:${VERSION}.rc.latest"
-- name: feature-bug-hotfix
-  if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$
-  before_install:
-  - echo $TRAVIS_BUILD_STAGE_NAME
-  install:
-  - npm install
-  before_script:
-  - npm run test
-  script:
-  - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
-  - NUMBER="$(echo $TRAVIS_BRANCH | cut -d'/' -f2)"
-  - docker build . -t "${IMAGE}:${GIT_SHA}"
-  - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
-  - docker push "${IMAGE}:${GIT_SHA}"
-  - docker push "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
+jobs:
+  include:
+  - stage: master
+    if: branch = master AND NOT type = pull_request
+    before_install:
+    - echo $TRAVIS_BUILD_STAGE_NAME
+    install:
+    - npm install
+    before_script:
+    - npm run test
+    script:
+    - docker build . -t "${IMAGE}:${VERSION}"
+    - docker push "${IMAGE}:${VERSION}"
+  - stage: develop
+    if: branch = develop AND NOT type = pull_request
+    before_install:
+    - echo $TRAVIS_BUILD_STAGE_NAME
+    install:
+    - npm install
+    before_script:
+    - npm run test
+    script:
+    - docker build . -t "${IMAGE}:${GIT_SHA}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${DATE}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.latest"
+    - docker push "${IMAGE}:${GIT_SHA}"
+    - docker push "${IMAGE}:${VERSION}.${DATE}"
+    - docker push "${IMAGE}:${VERSION}.latest"
+  - stage: release-branch
+    if: branch =~ ^release.*$ AND NOT type = pull_request
+    before_install:
+    - echo $TRAVIS_BUILD_STAGE_NAME
+    install:
+    - npm install
+    before_script:
+    - npm run test
+    script:
+    - docker build . -t "${IMAGE}:${GIT_SHA}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.rc.${DATE}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.rc.latest"
+    - docker push "${IMAGE}:${GIT_SHA}"
+    - docker push "${IMAGE}:${VERSION}.rc.${DATE}"
+    - docker push "${IMAGE}:${VERSION}.rc.latest"
+  - stage: feature-bug-hotfix
+    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$
+    before_install:
+    - echo $TRAVIS_BUILD_STAGE_NAME
+    install:
+    - npm install
+    before_script:
+    - npm run test
+    script:
+    - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
+    - NUMBER="$(echo $TRAVIS_BRANCH | cut -d'/' -f2)"
+    - docker build . -t "${IMAGE}:${GIT_SHA}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
+    - docker push "${IMAGE}:${GIT_SHA}"
+    - docker push "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
