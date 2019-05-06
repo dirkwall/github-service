@@ -17,14 +17,28 @@ before_install:
 - npm run test
 jobs:
   include:
-  - stage: master
-    if: branch = master AND NOT type = pull_request
+  - stage: feature/bug
+    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$
     script:
     - echo $TRAVIS_BUILD_STAGE_NAME
-    - docker build . -t "${IMAGE}:${VERSION}"
-    - docker push "${IMAGE}:${VERSION}"
+    - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
+    - NUMBER="$(echo $TRAVIS_BRANCH | cut -d'/' -f2)"
+    - docker build . -t "${IMAGE}:${GIT_SHA}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${TYPE}.${NUMBER}.${DATE}"
+    - docker push "${IMAGE}:${GIT_SHA}"
+    - docker push "${IMAGE}:${TYPE}.${NUMBER}.${DATE}"
   - stage: develop
     if: branch = develop AND NOT type = pull_request
+    script:
+    - echo $TRAVIS_BUILD_STAGE_NAME
+    - docker build . -t "${IMAGE}:${GIT_SHA}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${DATE}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:latest"
+    - docker push "${IMAGE}:${GIT_SHA}"
+    - docker push "${IMAGE}:${DATE}"
+    - docker push "${IMAGE}:latest"
+  - stage: release-branch
+    if: branch =~ ^release.*$ AND NOT type = pull_request
     script:
     - echo $TRAVIS_BUILD_STAGE_NAME
     - docker build . -t "${IMAGE}:${GIT_SHA}"
@@ -33,23 +47,19 @@ jobs:
     - docker push "${IMAGE}:${GIT_SHA}"
     - docker push "${IMAGE}:${VERSION}.${DATE}"
     - docker push "${IMAGE}:${VERSION}.latest"
-  - stage: release-branch
-    if: branch =~ ^release.*$ AND NOT type = pull_request
+  - stage: master
+    if: branch = master AND NOT type = pull_request
     script:
     - echo $TRAVIS_BUILD_STAGE_NAME
-    - docker build . -t "${IMAGE}:${GIT_SHA}"
-    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.rc.${DATE}"
-    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.rc.latest"
-    - docker push "${IMAGE}:${GIT_SHA}"
-    - docker push "${IMAGE}:${VERSION}.rc.${DATE}"
-    - docker push "${IMAGE}:${VERSION}.rc.latest"
-  - stage: feature-bug-hotfix
-    if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$
+    - docker build . -t "${IMAGE}:${VERSION}"
+    - docker push "${IMAGE}:${VERSION}"
+  - stage: hotfix
+    if: branch =~ ^hotfix.*$
     script:
     - echo $TRAVIS_BUILD_STAGE_NAME
     - TYPE="$(echo $TRAVIS_BRANCH | cut -d'/' -f1)"
     - NUMBER="$(echo $TRAVIS_BRANCH | cut -d'/' -f2)"
     - docker build . -t "${IMAGE}:${GIT_SHA}"
-    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
+    - docker tag "${IMAGE}:${GIT_SHA}" "${IMAGE}:${TYPE}.${NUMBER}.${DATE}"
     - docker push "${IMAGE}:${GIT_SHA}"
-    - docker push "${IMAGE}:${VERSION}.${TYPE}.${NUMBER}.${DATE}"
+    - docker push "${IMAGE}:${TYPE}.${NUMBER}.${DATE}"
