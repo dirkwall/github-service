@@ -17,7 +17,7 @@ stages:
 - name: master
   if: branch = master AND NOT type = pull_request
   before_install:
-  - echo "stage: master"
+  - echo $TRAVIS_BUILD_STAGE_NAME
   install:
   - npm install
   before_script:
@@ -43,7 +43,7 @@ stages:
 - name: release-branch
   if: branch =~ ^release.*$ AND NOT type = pull_request
   before_install:
-  - echo "stage: master"
+  - echo $TRAVIS_BUILD_STAGE_NAME
   install:
   - npm install
   before_script:
@@ -58,7 +58,7 @@ stages:
 - name: feature-bug-hotfix
   if: branch =~ ^feature.*$ OR branch =~ ^bug.*$ OR branch =~ ^hotfix.*$
   before_install:
-  - echo 'stage: master'
+  - echo $TRAVIS_BUILD_STAGE_NAME
   install:
   - npm install
   before_script:
