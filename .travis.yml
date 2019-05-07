@@ -15,7 +15,7 @@ before_install:
 - echo "$REGISTRY_PASSWORD" | docker login --username $REGISTRY_USER --password-stdin
 - REPO_URL="$(git remote get-url --all origin)"
 - LAST_COMMIT="$(git log -1 --oneline)"
-- ./writeManifest.sh
+- bash writeManifest.sh
 - cat MANIFEST
 - npm install
 - npm run test
