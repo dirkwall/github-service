@@ -22,5 +22,6 @@ RUN npm run build-ts
 
 USER myuser
 
+ENTRYPOINT [ "cat", "MANIFEST" ]
 # Start the app
 CMD ["/usr/local/bin/npm", "start"]

@@ -13,6 +13,12 @@ before_install:
 - DATE="$(date +'%Y%m%d.%H%M')"
 - GIT_SHA="$(git rev-parse --short HEAD)"
 - echo "$REGISTRY_PASSWORD" | docker login --username $REGISTRY_USER --password-stdin
+- REPO_URL="$(git remote get-url --all origin)"
+- LAST_COMMIT="$(git log -1 --oneline)"
+- touch MANIFEST
+- echo "##########\nrepository: $REPO_URL\nbranch: $TRAVIS_BRANCH\ncommit: $LAST_COMMIT\n" >> MANIFEST
+- echo "commitlink: $REPO_URL/commit/$TRAVIS_COMMIT\nrepolink: $REPO_URL/tree/$TRAVIS_COMMIT\n" >> MANIFEST
+- echo "travisbuild: $TRAVIS_JOB_WEB_URL\ntimestamp: $DATE" >> MANIFEST
 - npm install
 - npm run test
 jobs:
