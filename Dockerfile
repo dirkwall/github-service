@@ -22,6 +22,6 @@ RUN npm run build-ts
 
 USER myuser
 
-ENTRYPOINT [ "sh", "-c" "cat MANIFEST" ]
+ENTRYPOINT [ "sh", "-c", "cat MANIFEST" ]
 # Start the app
 CMD ["/usr/local/bin/npm", "start"]
