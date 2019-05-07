@@ -1,0 +1,9 @@
+##########
+repository: MANIFEST_REPOSITORY
+branch: MANIFEST_BRANCH
+commit: MANIFEST_LAST_COMMIT
+commitlink: MANIFEST_REPOSITORY/commit/MANIFEST_COMMIT
+repolink: MANIFEST_REPOSITORY/tree/MANIFEST_COMMIT
+travisbuild: MANIFEST_TRAVIS_JOB_URL
+timestamp: MANIFEST_DATE
+##########
