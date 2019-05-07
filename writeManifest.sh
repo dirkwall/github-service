@@ -1,17 +1,13 @@
 #!/bin/bash
 
-IMAGE=keptn/github-service
-REGISTRY_USER=dirkwallerstorfer
-VERSION="$(cat version)"
 DATE="$(date +'%Y%m%d.%H%M')"
 GIT_SHA="$(git rev-parse --short HEAD)"
-REPO_URL="$(git remote get-url --all origin)"
+REPO_URL=https://github.com/$TRAVIS_REPO_SLUG
 LAST_COMMIT="$(git log -1 --oneline)"
 
 sed -i 's~MANIFEST_REPOSITORY~'"$REPO_URL"'~' MANIFEST
-#- sed -i 's~PERSONAL_ACCESS_TOKEN_PLACEHOLDER~'"$GITAT"'~'
-#- echo "##########\nrepository: $REPO_URL\nbranch: $TRAVIS_BRANCH\ncommit: $LAST_COMMIT\n" >> MANIFEST
-#- echo "commitlink: $REPO_URL/commit/$TRAVIS_COMMIT\nrepolink: $REPO_URL/tree/$TRAVIS_COMMIT\n" >> MANIFEST
-#- echo "travisbuild: $TRAVIS_JOB_WEB_URL\ntimestamp: $DATE" >> MANIFEST
-
-echo "done"
+sed -i 's~MANIFEST_BRANCH~'"$TRAVIS_BRANCH"'~' MANIFEST
+sed -i 's~MANIFEST_LAST_COMMIT~'"$LAST_COMMIT"'~' MANIFEST
+sed -i 's~MANIFEST_COMMIT~'"$TRAVIS_COMMIT"'~' MANIFEST
+sed -i 's~MANIFEST_TRAVIS_JOB_URL~'"$TRAVIS_JOB_WEB_URL"'~' MANIFEST
+sed -i 's~MANIFEST_DATE~'"$DATE"'~' MANIFEST
